@@ -16,6 +16,8 @@ class DisplayConfig:
     width: int = 40
     lines: int = 12
     refresh_seconds: float = 2.0
+    font_size: int = 12
+    margin: int = 4
 
 
 @dataclass(frozen=True)
@@ -80,10 +82,8 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
         raise ConfigError("[[sources]] entries must be an array of tables")
 
     driver = str(display_data.get("driver", "text")).strip()
-    if driver != "text":
-        raise ConfigError(
-            f"unsupported display driver {driver!r}; initial scaffold supports 'text'"
-        )
+    if driver not in {"text", "waveshare_2in13_v4"}:
+        raise ConfigError(f"unsupported display driver {driver!r}")
 
     display = DisplayConfig(
         driver=driver,
@@ -93,6 +93,8 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             display_data.get("refresh_seconds", 2.0),
             "display.refresh_seconds",
         ),
+        font_size=_positive_int(display_data.get("font_size", 12), "display.font_size"),
+        margin=_positive_int(display_data.get("margin", 4), "display.margin"),
     )
     printer = PrinterConfig(
         prefix_source=bool(printer_data.get("prefix_source", True)),
@@ -111,9 +113,7 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
         if name in names:
             raise ConfigError(f"duplicate source name: {name}")
         if source_type not in {"file", "redis"}:
-            raise ConfigError(
-                f"sources[{index}].type must be 'file' or 'redis'"
-            )
+            raise ConfigError(f"sources[{index}].type must be 'file' or 'redis'")
         if source_type == "file" and not str(raw.get("path", "")).strip():
             raise ConfigError(f"file source {name!r} requires path")
         if source_type == "redis":
@@ -128,8 +128,4 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
         sources.append(SourceConfig(name=name, type=source_type, values=values))
         names.add(name)
 
-    return EpaperConfig(
-        display=display,
-        printer=printer,
-        sources=tuple(sources),
-    )
+    return EpaperConfig(display=display, printer=printer, sources=tuple(sources))

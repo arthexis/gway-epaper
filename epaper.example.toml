@@ -1,8 +1,12 @@
 [display]
+# Use "text" for development/CI or "waveshare_2in13_v4" for the
+# Waveshare 2.13-inch e-Paper HAT V4 (250x122 monochrome).
 driver = "text"
 width = 40
 lines = 12
 refresh_seconds = 2.0
+font_size = 12
+margin = 4
 
 [printer]
 prefix_source = true

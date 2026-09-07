@@ -9,8 +9,32 @@ Gway and exposed as managed commands.
 
 The display model is append-oriented: newly ingested lines appear at the bottom,
 existing lines move upward, and lines that no longer fit disappear from the top.
-This makes the display behave like a small continuous printout aggregating all
-configured sources.
+
+## Supported hardware
+
+The first hardware backend is the **Waveshare 2.13-inch e-Paper HAT V4**, the
+250x122 monochrome Raspberry Pi HAT identified on the board as `2.13inch e-Paper
+HAT` with the `V4` revision marker.
+
+The backend uses Waveshare's `waveshare_epd.epd2in13_V4` driver and Pillow for
+text rendering. Hardware imports are lazy, so development and CI do not require
+GPIO/SPI libraries or a Raspberry Pi.
+
+Install the optional rendering dependency and Waveshare's Python driver on the
+Pi, then configure:
+
+```toml
+[display]
+driver = "waveshare_2in13_v4"
+width = 40
+lines = 12
+refresh_seconds = 2.0
+font_size = 12
+margin = 4
+```
+
+The HAT uses the Raspberry Pi SPI/GPIO interface. SPI must be enabled on the Pi.
+The Waveshare driver itself is intentionally not vendored into this repository.
 
 ## Planned sources
 
@@ -41,13 +65,9 @@ gw.epaper.status()
 gw.epaper.run()
 ```
 
-`run` currently exercises the source/aggregation loop with the text backend.
-Hardware ePaper drivers and Redis consumption are intentionally staged in
-`PLAN.md`.
-
 ## Bootstrap service control without Gway
 
-The repository also includes thin bootstrap wrappers for cases where Gway is not
+The repository includes thin bootstrap wrappers for cases where Gway is not
 installed or is itself unavailable:
 
 ```text
@@ -57,41 +77,14 @@ epaper.bat start
 
 Both wrappers support `start`, `stop`, `restart`, `status`, and `run`. They call
 the same `gway_epaper.runtime.run_forever()` implementation used by the managed
-Gway command path; they are service-control fallbacks, not a second application
-CLI.
+Gway command path.
 
 By default they use `epaper.toml` in the repository root and write transient PID
 and log files below `.run/`. Set `EPAPER_CONFIG` to use another configuration
 file and `PYTHON` to select a different Python executable.
 
-On Linux, production service supervision is still expected to move to systemd in
-a later phase; `epaper.sh` remains useful as an emergency/bootstrap path.
-
 ## Configuration
 
-Copy `epaper.example.toml` to `epaper.toml`.
-
-```toml
-[display]
-driver = "text"
-width = 40
-lines = 12
-refresh_seconds = 2.0
-
-[[sources]]
-name = "arthexis-log"
-type = "file"
-path = "/var/log/arthexis/charger.gway-001.log"
-start = "end"
-
-[[sources]]
-name = "auth-events"
-type = "redis"
-url = "redis://localhost:6379/0"
-stream = "arthexis:events"
-event_types = ["ocpp.authorization"]
-start = "$"
-```
-
-See `PLAN.md` for replay semantics, Redis consumer-state requirements, ePaper
-refresh policy, and future implementation phases.
+Copy `epaper.example.toml` to `epaper.toml`. See `PLAN.md` for replay semantics,
+Redis consumer-state requirements, refresh policy, and future implementation
+phases.
