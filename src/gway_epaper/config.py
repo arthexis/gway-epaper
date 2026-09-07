@@ -18,6 +18,7 @@ class DisplayConfig:
     refresh_seconds: float = 2.0
     font_size: int = 12
     margin: int = 4
+    min_refresh_seconds: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,16 @@ def _positive_float(value: Any, label: str) -> float:
     return result
 
 
+def _nonnegative_float(value: Any, label: str) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{label} must be a number") from exc
+    if result < 0:
+        raise ConfigError(f"{label} must be non-negative")
+    return result
+
+
 def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
     config_path = Path(path).expanduser()
     try:
@@ -104,7 +115,11 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             "display.refresh_seconds",
         ),
         font_size=_positive_int(display_data.get("font_size", 12), "display.font_size"),
-        margin=_positive_int(display_data.get("margin", 4), "display.margin"),
+        margin=_nonnegative_int(display_data.get("margin", 4), "display.margin"),
+        min_refresh_seconds=_nonnegative_float(
+            display_data.get("min_refresh_seconds", 5.0),
+            "display.min_refresh_seconds",
+        ),
     )
     printer = PrinterConfig(
         prefix_source=bool(printer_data.get("prefix_source", True)),
