@@ -20,6 +20,8 @@ name = "arthexis-log"
 type = "file"
 path = "/var/log/arthexis/charger.gway-001.log"
 start = "end"
+cursor_file = "/var/lib/gway-epaper/arthexis-log.cursor"
+max_bytes = 65536
 poll_seconds = 0.5
 
 [[sources]]
