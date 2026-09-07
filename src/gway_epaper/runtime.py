@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from .config import EpaperConfig, load_config
-from .display import TextDisplay
+from .displays import build_display
 from .printer import PrinterBuffer
 from .sources import FileSource
 
@@ -17,7 +17,7 @@ class Runtime:
             lines=config.display.lines,
             config=config.printer,
         )
-        self.display = TextDisplay()
+        self.display = build_display(config.display)
         self.file_sources = [
             FileSource(
                 source.name,
@@ -28,11 +28,16 @@ class Runtime:
             if source.type == "file"
         ]
 
-    def poll_once(self) -> str:
+    def poll_once(self):
         for source in self.file_sources:
             for item in source.read_available():
                 self.printer.append(item)
         return self.display.render(self.printer.snapshot())
+
+    def close(self) -> None:
+        close = getattr(self.display, "close", None)
+        if close is not None:
+            close()
 
 
 def build_runtime(path: str | Path = "epaper.toml") -> Runtime:
@@ -41,8 +46,11 @@ def build_runtime(path: str | Path = "epaper.toml") -> Runtime:
 
 def run_forever(path: str | Path = "epaper.toml") -> None:
     runtime = build_runtime(path)
-    while True:
-        frame = runtime.poll_once()
-        if frame:
-            print("\033[2J\033[H" + frame, flush=True)
-        time.sleep(runtime.config.display.refresh_seconds)
+    try:
+        while True:
+            frame = runtime.poll_once()
+            if isinstance(frame, str) and frame:
+                print("\033[2J\033[H" + frame, flush=True)
+            time.sleep(runtime.config.display.refresh_seconds)
+    finally:
+        runtime.close()
