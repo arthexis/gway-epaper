@@ -81,6 +81,15 @@ def _nonnegative_float(value: Any, label: str) -> float:
     return result
 
 
+def _validate_cursor_file(value: Any, label: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, str):
+        raise ConfigError(f"{label} must be a string")
+    if not value.strip():
+        raise ConfigError(f"{label} must not be empty")
+
+
 def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
     config_path = Path(path).expanduser()
     try:
@@ -139,8 +148,22 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             raise ConfigError(f"duplicate source name: {name}")
         if source_type not in {"file", "redis"}:
             raise ConfigError(f"sources[{index}].type must be 'file' or 'redis'")
-        if source_type == "file" and not str(raw.get("path", "")).strip():
-            raise ConfigError(f"file source {name!r} requires path")
+
+        if source_type == "file":
+            if not str(raw.get("path", "")).strip():
+                raise ConfigError(f"file source {name!r} requires path")
+            start = str(raw.get("start", "end"))
+            if start not in {"beginning", "end"}:
+                raise ConfigError(
+                    f"file source {name!r} start must be 'beginning' or 'end'"
+                )
+            _positive_int(
+                raw.get("max_bytes", 65536), f"file source {name!r} max_bytes"
+            )
+            _validate_cursor_file(
+                raw.get("cursor_file"), f"file source {name!r} cursor_file"
+            )
+
         if source_type == "redis":
             if not str(raw.get("url", "")).strip():
                 raise ConfigError(f"redis source {name!r} requires url")
@@ -162,16 +185,9 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
                 raise ConfigError(
                     f"redis source {name!r} event_types must be an array of strings"
                 )
-            cursor_file = raw.get("cursor_file")
-            if cursor_file is not None:
-                if not isinstance(cursor_file, str):
-                    raise ConfigError(
-                        f"redis source {name!r} cursor_file must be a string"
-                    )
-                if not cursor_file.strip():
-                    raise ConfigError(
-                        f"redis source {name!r} cursor_file must not be empty"
-                    )
+            _validate_cursor_file(
+                raw.get("cursor_file"), f"redis source {name!r} cursor_file"
+            )
 
         values = dict(raw)
         values.pop("name", None)
