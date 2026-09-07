@@ -23,6 +23,8 @@ class Runtime:
                 source.name,
                 source.values["path"],
                 start=str(source.values.get("start", "end")),
+                cursor_file=source.values.get("cursor_file"),
+                max_bytes=int(source.values.get("max_bytes", 65536)),
             )
             for source in config.sources
             if source.type == "file"
@@ -42,6 +44,13 @@ class Runtime:
             if source.type == "redis"
         ]
         self._redis_blocking_index = 0
+
+    def _poll_file_sources(self) -> None:
+        for source in self.file_sources:
+            items = source.read_available()
+            for item in items:
+                self.printer.append(item)
+            source.commit_batch()
 
     def _poll_redis_sources(self) -> None:
         if not self.redis_sources:
@@ -63,10 +72,7 @@ class Runtime:
         self._redis_blocking_index = (blocking_index + 1) % source_count
 
     def poll_once(self):
-        for source in self.file_sources:
-            for item in source.read_available():
-                self.printer.append(item)
-
+        self._poll_file_sources()
         self._poll_redis_sources()
 
         return self.display.render(self.printer.snapshot())
