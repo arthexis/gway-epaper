@@ -17,8 +17,8 @@ The first hardware backend is the **Waveshare 2.13-inch e-Paper HAT V4**, the
 HAT` with the `V4` revision marker.
 
 The backend uses Waveshare's `waveshare_epd.epd2in13_V4` driver and Pillow for
-text rendering. Hardware imports are lazy, so development and CI do not require
-GPIO/SPI libraries or a Raspberry Pi.
+text rendering. Hardware imports are lazy and cached, so development and CI do
+not require GPIO/SPI libraries or a Raspberry Pi.
 
 ```toml
 [display]
@@ -26,12 +26,22 @@ driver = "waveshare_2in13_v4"
 width = 40
 lines = 12
 refresh_seconds = 2.0
+min_refresh_seconds = 5.0
 font_size = 12
 margin = 4
 ```
 
+`refresh_seconds` controls the runtime/source polling loop. Physical Waveshare
+updates are independently guarded by `min_refresh_seconds`: unchanged frames are
+not sent to the panel, and multiple changed frames arriving inside the guard
+window are coalesced so only the newest frame is rendered when the next refresh
+is due. Set `min_refresh_seconds = 0` only when explicitly testing unrestricted
+refreshes.
+
 The HAT uses the Raspberry Pi SPI/GPIO interface. SPI must be enabled on the Pi.
 The Waveshare driver itself is intentionally not vendored into this repository.
+The current backend uses full refreshes; partial-refresh policy remains deferred
+until the real V4 panel has been validated for orientation, ghosting, and cadence.
 
 ## Sources
 
