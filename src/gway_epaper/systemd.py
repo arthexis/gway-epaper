@@ -45,7 +45,8 @@ def render_unit(
         "Type=simple\n"
         f"User={service_user}\n"
         "Environment=PYTHONUNBUFFERED=1\n"
-        f"ExecStart={_unit_arg(python_path)} -m gway_epaper.service {_unit_arg(config_path)}\n"
+        f"ExecStart={_unit_arg(python_path)} -m gway_epaper.service "
+        f"{_unit_arg(config_path)}\n"
         "Restart=on-failure\n"
         "RestartSec=5s\n"
         "TimeoutStopSec=20s\n\n"
@@ -121,7 +122,9 @@ def restart_service(*, unit_path: str | Path = DEFAULT_UNIT_PATH) -> None:
     _systemctl("restart", Path(unit_path).name)
 
 
-def service_status(*, unit_path: str | Path = DEFAULT_UNIT_PATH) -> dict[str, object]:
+def service_status(
+    *, unit_path: str | Path = DEFAULT_UNIT_PATH
+) -> dict[str, object]:
     """Return machine-friendly systemd active/enabled state."""
 
     name = Path(unit_path).name
