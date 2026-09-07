@@ -21,6 +21,7 @@ class FakeEPD:
     def __init__(self) -> None:
         self.init_calls = 0
         self.displayed_sizes: list[tuple[int, int]] = []
+        self.clear_calls: list[int] = []
         self.sleep_calls = 0
 
     def init(self) -> None:
@@ -32,6 +33,9 @@ class FakeEPD:
 
     def display(self, _buffer) -> None:
         pass
+
+    def Clear(self, value: int) -> None:
+        self.clear_calls.append(value)
 
     def sleep(self) -> None:
         self.sleep_calls += 1
@@ -114,6 +118,20 @@ def test_changed_frames_are_coalesced_until_refresh_is_due() -> None:
     assert display.render(["three"]) is True
     assert len(epd.displayed_sizes) == 2
     assert display._last_rows == ("three",)
+
+
+def test_clear_uses_hardware_clear_and_resets_cached_frame() -> None:
+    clock = FakeClock()
+    display, epd = build_fake_display(clock=clock)
+
+    display.render(["one"])
+    clock.now = 1.0
+
+    assert display.clear() is True
+    assert epd.clear_calls == [0xFF]
+    assert display._last_rows == ()
+    assert display._pending_rows is None
+    assert display._last_refresh_at == 1.0
 
 
 def test_close_sleeps_initialized_panel_and_allows_reinitialization() -> None:

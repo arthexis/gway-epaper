@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..config import load_config
+from ..displays import build_display
 from ..runtime import build_runtime, run_forever
 
 
@@ -38,3 +39,32 @@ def run(config: Path = Path("epaper.toml")) -> None:
     """Run the foreground aggregation loop using the configured backend."""
 
     run_forever(config)
+
+
+def write(text: str, config: Path = Path("epaper.toml")) -> bool:
+    """Write arbitrary text directly to the configured display."""
+
+    value = load_config(config)
+    display = build_display(value.display)
+    try:
+        return bool(display.render(text.splitlines() or [""]))
+    finally:
+        close = getattr(display, "close", None)
+        if close is not None:
+            close()
+
+
+def clear(config: Path = Path("epaper.toml")) -> bool:
+    """Clear the configured display."""
+
+    value = load_config(config)
+    display = build_display(value.display)
+    try:
+        clear_display = getattr(display, "clear", None)
+        if clear_display is not None:
+            return bool(clear_display())
+        return bool(display.render([""]))
+    finally:
+        close = getattr(display, "close", None)
+        if close is not None:
+            close()
