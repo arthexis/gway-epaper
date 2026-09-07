@@ -36,8 +36,6 @@ class FileSource:
         with self.path.open("r", encoding="utf-8", errors="replace") as stream:
             stream.seek(self._offset)
             for line in stream:
-                items.append(
-                    FeedItem(source=self.name, text=line.rstrip("\r\n"))
-                )
+                items.append(FeedItem(source=self.name, text=line.rstrip("\r\n")))
             self._offset = stream.tell()
         return items
