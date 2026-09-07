@@ -6,7 +6,7 @@ from pathlib import Path
 from .config import EpaperConfig, load_config
 from .displays import build_display
 from .printer import PrinterBuffer
-from .sources import FileSource
+from .sources import FileSource, RedisStreamSource
 
 
 class Runtime:
@@ -27,11 +27,32 @@ class Runtime:
             for source in config.sources
             if source.type == "file"
         ]
+        self.redis_sources = [
+            RedisStreamSource(
+                source.name,
+                url=str(source.values["url"]),
+                stream=str(source.values["stream"]),
+                start=str(source.values.get("start", "$")),
+                batch_size=int(source.values.get("batch_size", 100)),
+                block_ms=int(source.values.get("block_ms", 1000)),
+                cursor_file=source.values.get("cursor_file"),
+                event_types=tuple(source.values.get("event_types", ())),
+            )
+            for source in config.sources
+            if source.type == "redis"
+        ]
 
     def poll_once(self):
         for source in self.file_sources:
             for item in source.read_available():
                 self.printer.append(item)
+
+        for source in self.redis_sources:
+            items = source.read_available()
+            for item in items:
+                self.printer.append(item)
+            source.commit_batch()
+
         return self.display.render(self.printer.snapshot())
 
     def close(self) -> None:
