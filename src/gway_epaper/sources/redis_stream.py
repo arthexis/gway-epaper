@@ -39,7 +39,9 @@ class RedisStreamSource:
         self.start = start
         self.batch_size = batch_size
         self.block_ms = block_ms
-        self.cursor_file = Path(cursor_file).expanduser() if cursor_file is not None else None
+        self.cursor_file = (
+            Path(cursor_file).expanduser() if cursor_file is not None else None
+        )
         self.event_types = frozenset(event_types)
         self._client = client
         self._clock = clock
