@@ -45,6 +45,28 @@ gw.epaper.run()
 Hardware ePaper drivers and Redis consumption are intentionally staged in
 `PLAN.md`.
 
+## Bootstrap service control without Gway
+
+The repository also includes thin bootstrap wrappers for cases where Gway is not
+installed or is itself unavailable:
+
+```text
+./epaper.sh start
+epaper.bat start
+```
+
+Both wrappers support `start`, `stop`, `restart`, `status`, and `run`. They call
+the same `gway_epaper.runtime.run_forever()` implementation used by the managed
+Gway command path; they are service-control fallbacks, not a second application
+CLI.
+
+By default they use `epaper.toml` in the repository root and write transient PID
+and log files below `.run/`. Set `EPAPER_CONFIG` to use another configuration
+file and `PYTHON` to select a different Python executable.
+
+On Linux, production service supervision is still expected to move to systemd in
+a later phase; `epaper.sh` remains useful as an emergency/bootstrap path.
+
 ## Configuration
 
 Copy `epaper.example.toml` to `epaper.toml`.
