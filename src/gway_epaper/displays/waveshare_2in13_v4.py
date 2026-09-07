@@ -98,6 +98,16 @@ class Waveshare2in13V4Display:
         self._last_refresh_at = now
         return True
 
+    def clear(self) -> bool:
+        """Immediately clear the physical panel, bypassing refresh coalescing."""
+
+        epd = self._device()
+        epd.Clear(0xFF)
+        self._last_rows = ()
+        self._pending_rows = None
+        self._last_refresh_at = self._clock()
+        return True
+
     def close(self) -> None:
         if self._epd is not None:
             self._epd.sleep()
