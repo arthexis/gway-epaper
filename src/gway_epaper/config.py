@@ -157,7 +157,9 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
                 raise ConfigError(
                     f"file source {name!r} start must be 'beginning' or 'end'"
                 )
-            _positive_int(raw.get("max_bytes", 65536), f"file source {name!r} max_bytes")
+            _positive_int(
+                raw.get("max_bytes", 65536), f"file source {name!r} max_bytes"
+            )
             _validate_cursor_file(
                 raw.get("cursor_file"), f"file source {name!r} cursor_file"
             )
