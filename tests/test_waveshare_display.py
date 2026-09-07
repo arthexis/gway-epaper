@@ -4,7 +4,9 @@ from gway_epaper.config import load_config
 from gway_epaper.displays import Waveshare2in13V4Display, build_display
 
 
-def test_waveshare_v4_configuration_builds_without_loading_hardware(tmp_path: Path) -> None:
+def test_waveshare_v4_configuration_builds_without_loading_hardware(
+    tmp_path: Path,
+) -> None:
     path = tmp_path / "epaper.toml"
     path.write_text(
         """
