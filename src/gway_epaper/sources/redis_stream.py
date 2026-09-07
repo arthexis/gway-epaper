@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -24,20 +25,26 @@ class RedisStreamSource:
         cursor_file: str | Path | None = None,
         event_types: tuple[str, ...] = (),
         client: Any | None = None,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than zero")
         if block_ms < 0:
             raise ValueError("block_ms must be non-negative")
+        if isinstance(cursor_file, str) and not cursor_file.strip():
+            raise ValueError("cursor_file must not be empty")
         self.name = name
         self.url = url
         self.stream = stream
         self.start = start
         self.batch_size = batch_size
         self.block_ms = block_ms
-        self.cursor_file = Path(cursor_file).expanduser() if cursor_file else None
+        self.cursor_file = (
+            Path(cursor_file).expanduser() if cursor_file is not None else None
+        )
         self.event_types = frozenset(event_types)
         self._client = client
+        self._clock = clock
         self._error_types: tuple[type[BaseException], ...] = (
             ConnectionError,
             TimeoutError,
@@ -139,8 +146,14 @@ class RedisStreamSource:
             metadata=metadata,
         )
 
-    def read_available(self) -> list[FeedItem]:
-        now = time.monotonic()
+    def read_available(self, *, block_ms: int | None = None) -> list[FeedItem]:
+        """Read one bounded batch, optionally overriding this call's block time."""
+
+        effective_block_ms = self.block_ms if block_ms is None else block_ms
+        if effective_block_ms < 0:
+            raise ValueError("block_ms must be non-negative")
+
+        now = self._clock()
         if now < self._retry_at:
             return []
 
@@ -149,7 +162,7 @@ class RedisStreamSource:
             response = self._redis().xread(
                 {self.stream: self._cursor},
                 count=self.batch_size,
-                block=self.block_ms,
+                block=effective_block_ms,
             )
         except self._error_types:
             self._retry_at = now + self._retry_seconds

@@ -93,3 +93,21 @@ batch_size = 0
 
     with pytest.raises(ConfigError, match="batch_size must be greater than zero"):
         load_config(path)
+
+
+def test_load_config_rejects_empty_redis_cursor_file(tmp_path: Path) -> None:
+    path = tmp_path / "epaper.toml"
+    path.write_text(
+        """
+[[sources]]
+name = "auth"
+type = "redis"
+url = "redis://localhost:6379/0"
+stream = "arthexis:events"
+cursor_file = ""
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="cursor_file must not be empty"):
+        load_config(path)
