@@ -1,5 +1,4 @@
 from pathlib import Path
-from types import SimpleNamespace
 
 from PIL import Image, ImageDraw, ImageFont
 
