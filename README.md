@@ -138,6 +138,37 @@ gw.epaper.status()
 gw.epaper.run()
 ```
 
+## systemd service lifecycle
+
+On Linux systems using systemd, Gway can install and manage `gway-epaper` as a
+system service:
+
+```text
+gway epaper service-install --config /etc/gway-epaper/epaper.toml
+gway epaper service-status
+gway epaper service-restart
+gway epaper service-stop
+gway epaper service-start
+gway epaper service-uninstall
+```
+
+The default unit path is `/etc/systemd/system/gway-epaper.service`. Installation
+writes the unit atomically, runs `systemctl daemon-reload`, enables it, and starts
+it with a restart. The unit uses `Restart=on-failure`, waits for
+`network-online.target`, sends logs to the journal, and executes the exact Python
+interpreter used to install it. The configuration path embedded in the unit is
+absolute, so service startup does not depend on a working directory.
+
+Writing the default unit and controlling systemd normally require elevated
+privileges. When installation is invoked through `sudo`, the generated unit uses
+`SUDO_USER` as its service account rather than running the display process as
+root. An explicit `--user` overrides this behavior. That account must have the
+permissions required for configured log/state files and Raspberry Pi SPI/GPIO.
+
+For staged installation, `--no-enable` and `--no-start` can suppress those two
+actions. `service-status` returns machine-friendly active/enabled state instead
+of parsing the human-oriented output of `systemctl status`.
+
 ## Bootstrap service control without Gway
 
 The repository includes thin bootstrap wrappers for cases where Gway is not
