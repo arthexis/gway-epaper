@@ -1,0 +1,7 @@
+[project]
+name = "epaper"
+aliases = ["gway-epaper"]
+
+[adapter]
+type = "python"
+module = "gway_epaper.commands"
