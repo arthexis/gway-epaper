@@ -47,7 +47,9 @@ def test_restart_resumes_after_last_committed_line(tmp_path: Path) -> None:
     assert texts(restarted.read_available()) == ["three"]
 
 
-def test_partial_line_is_not_emitted_or_committed_until_complete(tmp_path: Path) -> None:
+def test_partial_line_is_not_emitted_or_committed_until_complete(
+    tmp_path: Path,
+) -> None:
     log = tmp_path / "events.log"
     cursor = tmp_path / "events.cursor"
     log.write_bytes(b"complete\npart")
@@ -61,7 +63,9 @@ def test_partial_line_is_not_emitted_or_committed_until_complete(tmp_path: Path)
 
     assert texts(source.read_available()) == ["complete"]
     source.commit_batch()
-    assert json.loads(cursor.read_text(encoding="utf-8"))["offset"] == len(b"complete\n")
+    assert json.loads(cursor.read_text(encoding="utf-8"))["offset"] == len(
+        b"complete\n"
+    )
 
     with log.open("ab") as stream:
         stream.write(b"ial\n")
