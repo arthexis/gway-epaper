@@ -38,8 +38,14 @@ class RedisStreamSource:
         self.cursor_file = Path(cursor_file).expanduser() if cursor_file else None
         self.event_types = frozenset(event_types)
         self._client = client
+        self._error_types: tuple[type[BaseException], ...] = (
+            ConnectionError,
+            TimeoutError,
+            OSError,
+        )
         self._cursor = self._load_cursor() or start
         self._read_cursor = self._cursor
+        self._start_resolved = self._cursor != "$"
         self._retry_at = 0.0
         self._retry_seconds = 1.0
 
@@ -51,10 +57,17 @@ class RedisStreamSource:
         if self._client is None:
             try:
                 from redis import Redis
+                from redis.exceptions import ConnectionError as RedisConnectionError
+                from redis.exceptions import TimeoutError as RedisTimeoutError
             except ImportError as exc:
                 raise RuntimeError(
                     "Redis Stream sources require the 'redis' optional dependency"
                 ) from exc
+            self._error_types = (
+                RedisConnectionError,
+                RedisTimeoutError,
+                OSError,
+            )
             self._client = Redis.from_url(self.url, decode_responses=True)
         return self._client
 
@@ -74,6 +87,15 @@ class RedisStreamSource:
             temporary.write_text(value + "\n", encoding="utf-8")
             os.replace(temporary, self.cursor_file)
         self._cursor = value
+
+    def _resolve_start(self) -> None:
+        if self._start_resolved:
+            return
+        latest = self._redis().xrevrange(self.stream, count=1)
+        baseline = str(latest[0][0]) if latest else "0-0"
+        self._save_cursor(baseline)
+        self._read_cursor = baseline
+        self._start_resolved = True
 
     def commit_batch(self) -> None:
         """Persist the last ID returned by a successfully ingested read batch."""
@@ -123,12 +145,13 @@ class RedisStreamSource:
             return []
 
         try:
+            self._resolve_start()
             response = self._redis().xread(
                 {self.stream: self._cursor},
                 count=self.batch_size,
                 block=self.block_ms,
             )
-        except (ConnectionError, TimeoutError, OSError):
+        except self._error_types:
             self._retry_at = now + self._retry_seconds
             self._retry_seconds = min(self._retry_seconds * 2, 30.0)
             return []
