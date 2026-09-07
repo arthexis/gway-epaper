@@ -134,8 +134,12 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             start = str(raw.get("start", "$"))
             if not start:
                 raise ConfigError(f"redis source {name!r} requires a non-empty start")
-            _positive_int(raw.get("batch_size", 100), f"redis source {name!r} batch_size")
-            _nonnegative_int(raw.get("block_ms", 1000), f"redis source {name!r} block_ms")
+            _positive_int(
+                raw.get("batch_size", 100), f"redis source {name!r} batch_size"
+            )
+            _nonnegative_int(
+                raw.get("block_ms", 1000), f"redis source {name!r} block_ms"
+            )
             event_types = raw.get("event_types", [])
             if not isinstance(event_types, list) or not all(
                 isinstance(value, str) and value for value in event_types
@@ -145,9 +149,7 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
                 )
             cursor_file = raw.get("cursor_file")
             if cursor_file is not None and not isinstance(cursor_file, str):
-                raise ConfigError(
-                    f"redis source {name!r} cursor_file must be a string"
-                )
+                raise ConfigError(f"redis source {name!r} cursor_file must be a string")
 
         values = dict(raw)
         values.pop("name", None)
