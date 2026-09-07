@@ -214,11 +214,13 @@ def test_reconnect_backoff_skips_reads_until_retry_window() -> None:
     assert len(client.xread_calls) == 2
 
 
-def test_trimmed_cursor_continues_from_first_available_newer_entry(tmp_path: Path) -> None:
+def test_trimmed_cursor_continues_from_first_available_newer_entry(
+    tmp_path: Path,
+) -> None:
     cursor = tmp_path / "events.cursor"
     cursor.write_text("1000-0\n", encoding="utf-8")
     client = FakeRedis(
-        responses=[[ ("arthexis:events", [auth("9000-0"), auth("9001-0")]) ]]
+        responses=[[("arthexis:events", [auth("9000-0"), auth("9001-0")])]]
     )
     source = RedisStreamSource(
         "auth",
