@@ -19,7 +19,11 @@ def test_render_unit_uses_absolute_paths_and_restart_policy(tmp_path: Path) -> N
 
     unit = systemd.render_unit(config, python=python, user="display")
 
-    assert f'ExecStart="{python.resolve()}" -m gway_epaper.service "{config.resolve()}"' in unit
+    assert (
+        f'ExecStart="{python.resolve()}" -m gway_epaper.service '
+        f'"{config.resolve()}"'
+        in unit
+    )
     assert "User=display\n" in unit
     assert "Restart=on-failure\n" in unit
     assert "RestartSec=5s\n" in unit
@@ -109,7 +113,9 @@ def test_uninstall_is_idempotent_and_reloads_systemd(
     ]
 
 
-def test_service_status_reports_active_and_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_service_status_reports_active_and_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def fake_systemctl(*args: str, check: bool = True):
         if args[0] == "is-active":
             return completed(*args, stdout="active\n")
@@ -126,7 +132,9 @@ def test_service_status_reports_active_and_enabled(monkeypatch: pytest.MonkeyPat
     }
 
 
-def test_internal_service_runner_requires_one_config(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_internal_service_runner_requires_one_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     seen: list[Path] = []
     monkeypatch.setattr(service, "run_forever", lambda path: seen.append(path))
 
