@@ -41,17 +41,33 @@ class Runtime:
             for source in config.sources
             if source.type == "redis"
         ]
+        self._redis_blocking_index = 0
+
+    def _poll_redis_sources(self) -> None:
+        if not self.redis_sources:
+            return
+
+        source_count = len(self.redis_sources)
+        blocking_index = self._redis_blocking_index % source_count
+        order = [
+            self.redis_sources[(blocking_index + offset) % source_count]
+            for offset in range(source_count)
+        ]
+
+        for offset, source in enumerate(order):
+            items = source.read_available(block_ms=None if offset == 0 else 0)
+            for item in items:
+                self.printer.append(item)
+            source.commit_batch()
+
+        self._redis_blocking_index = (blocking_index + 1) % source_count
 
     def poll_once(self):
         for source in self.file_sources:
             for item in source.read_available():
                 self.printer.append(item)
 
-        for source in self.redis_sources:
-            items = source.read_available()
-            for item in items:
-                self.printer.append(item)
-            source.commit_batch()
+        self._poll_redis_sources()
 
         return self.display.render(self.printer.snapshot())
 
