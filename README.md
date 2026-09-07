@@ -20,9 +20,6 @@ The backend uses Waveshare's `waveshare_epd.epd2in13_V4` driver and Pillow for
 text rendering. Hardware imports are lazy, so development and CI do not require
 GPIO/SPI libraries or a Raspberry Pi.
 
-Install the optional rendering dependency and Waveshare's Python driver on the
-Pi, then configure:
-
 ```toml
 [display]
 driver = "waveshare_2in13_v4"
@@ -36,12 +33,40 @@ margin = 4
 The HAT uses the Raspberry Pi SPI/GPIO interface. SPI must be enabled on the Pi.
 The Waveshare driver itself is intentionally not vendored into this repository.
 
-## Planned sources
+## Sources
 
-- ordinary log/text files
-- Redis Streams, beginning with Arthexis `arthexis:events`
-- later source adapters can be added without changing the printer or display
-  contracts
+File sources and Redis Streams are supported. The first Redis integration is the
+Arthexis `arthexis:events` stream:
+
+```toml
+[[sources]]
+name = "auth-events"
+type = "redis"
+url = "redis://localhost:6379/0"
+stream = "arthexis:events"
+event_types = ["ocpp.authorization"]
+start = "$"
+batch_size = 100
+block_ms = 1000
+cursor_file = "/var/lib/gway-epaper/auth.cursor"
+```
+
+Install Redis support with:
+
+```text
+python -m pip install -e '.[redis]'
+```
+
+`start = "$"` begins at the current stream tail, `0-0` consumes retained
+history, and an explicit Redis Stream ID resumes from a known point. `$` is
+resolved once to a concrete ID so entries cannot fall into gaps between polls.
+When `cursor_file` is configured, the last ingested stream ID is written
+atomically and reused after restart.
+
+Authorization events retain the full `id_tag`, `original`, and `raw` fields in
+the `FeedItem` metadata. Repeated-looking authorization events are deliberately
+not deduplicated because chargers may replay buffered requests after long
+offline periods.
 
 ## Initial commands
 
@@ -86,5 +111,4 @@ file and `PYTHON` to select a different Python executable.
 ## Configuration
 
 Copy `epaper.example.toml` to `epaper.toml`. See `PLAN.md` for replay semantics,
-Redis consumer-state requirements, refresh policy, and future implementation
-phases.
+refresh/backpressure policy, and future implementation phases.

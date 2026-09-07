@@ -29,8 +29,7 @@ def status(config: Path = Path("epaper.toml")) -> dict[str, object]:
         "lines": value.display.lines,
         "refresh_seconds": value.display.refresh_seconds,
         "sources": [
-            {"name": source.name, "type": source.type}
-            for source in value.sources
+            {"name": source.name, "type": source.type} for source in value.sources
         ],
     }
 
