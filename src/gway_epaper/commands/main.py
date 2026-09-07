@@ -7,11 +7,11 @@ from ..runtime import build_runtime, run_forever
 from ..systemd import (
     install_service,
     restart_service,
-    service_status as get_service_status,
     start_service,
     stop_service,
     uninstall_service,
 )
+from ..systemd import service_status as get_service_status
 
 
 def validate(config: Path = Path("epaper.toml")) -> bool:
