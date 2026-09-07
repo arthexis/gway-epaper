@@ -21,8 +21,7 @@ def test_render_unit_uses_absolute_paths_and_restart_policy(tmp_path: Path) -> N
 
     assert (
         f'ExecStart="{python.resolve()}" -m gway_epaper.service '
-        f'"{config.resolve()}"'
-        in unit
+        f'"{config.resolve()}"' in unit
     )
     assert "User=display\n" in unit
     assert "Restart=on-failure\n" in unit
