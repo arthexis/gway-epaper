@@ -45,8 +45,37 @@ until the real V4 panel has been validated for orientation, ghosting, and cadenc
 
 ## Sources
 
-File sources and Redis Streams are supported. The first Redis integration is the
-Arthexis `arthexis:events` stream:
+File sources and Redis Streams are supported.
+
+### File sources
+
+```toml
+[[sources]]
+name = "arthexis-log"
+type = "file"
+path = "/var/log/arthexis/charger.gway-001.log"
+start = "end"
+cursor_file = "/var/lib/gway-epaper/arthexis-log.cursor"
+max_bytes = 65536
+```
+
+When `cursor_file` is configured, the file identity and last accepted byte offset
+are written atomically and reused after restart. Cursor state advances only after
+the printer accepts the complete lines returned by a read, matching the Redis
+commit-after-ingest behavior.
+
+File identity uses the filesystem device/inode pair. A replaced or rotated file
+is therefore read from byte zero even if it reuses the same pathname. Truncation
+also resets the reader to byte zero. Partial lines are retained in memory and are
+not emitted or committed until a line terminator arrives, so a restart safely
+re-reads an unfinished line from the last durable offset.
+
+Each read is bounded by `max_bytes` (default 65536). Long lines may span multiple
+polls without being split into multiple `FeedItem`s.
+
+### Redis Streams
+
+The first Redis integration is the Arthexis `arthexis:events` stream:
 
 ```toml
 [[sources]]
