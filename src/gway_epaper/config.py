@@ -163,8 +163,15 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
                     f"redis source {name!r} event_types must be an array of strings"
                 )
             cursor_file = raw.get("cursor_file")
-            if cursor_file is not None and not isinstance(cursor_file, str):
-                raise ConfigError(f"redis source {name!r} cursor_file must be a string")
+            if cursor_file is not None:
+                if not isinstance(cursor_file, str):
+                    raise ConfigError(
+                        f"redis source {name!r} cursor_file must be a string"
+                    )
+                if not cursor_file.strip():
+                    raise ConfigError(
+                        f"redis source {name!r} cursor_file must not be empty"
+                    )
 
         values = dict(raw)
         values.pop("name", None)
