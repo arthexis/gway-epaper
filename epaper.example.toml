@@ -1,0 +1,27 @@
+[display]
+driver = "text"
+width = 40
+lines = 12
+refresh_seconds = 2.0
+
+[printer]
+prefix_source = true
+timestamp = false
+
+[[sources]]
+name = "arthexis-log"
+type = "file"
+path = "/var/log/arthexis/charger.gway-001.log"
+start = "end"
+poll_seconds = 0.5
+
+[[sources]]
+name = "auth-events"
+type = "redis"
+url = "redis://localhost:6379/0"
+stream = "arthexis:events"
+event_types = ["ocpp.authorization"]
+start = "$"
+batch_size = 100
+block_ms = 1000
+cursor_file = "/var/lib/gway-epaper/auth.cursor"
