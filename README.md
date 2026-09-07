@@ -71,7 +71,16 @@ python -m pip install -e '.[redis]'
 history, and an explicit Redis Stream ID resumes from a known point. `$` is
 resolved once to a concrete ID so entries cannot fall into gaps between polls.
 When `cursor_file` is configured, the last ingested stream ID is written
-atomically and reused after restart.
+atomically and reused after restart. An empty cursor path is rejected rather than
+silently resolving to the working directory.
+
+Reads are bounded by `batch_size`. When multiple Redis sources are configured,
+only one source is allowed to use its configured blocking read during a runtime
+poll; the others are read non-blocking, and the blocking slot rotates each poll.
+This bounds Redis wait time to one source's `block_ms` instead of multiplying it
+by the number of sources. Connection failures use exponential retry backoff from
+1 to 30 seconds. If Redis has trimmed entries older than the saved cursor, normal
+stream semantics continue from the first retained entry newer than that cursor.
 
 Authorization events retain the full `id_tag`, `original`, and `raw` fields in
 the `FeedItem` metadata. Repeated-looking authorization events are deliberately
