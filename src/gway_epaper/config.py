@@ -50,6 +50,16 @@ def _positive_int(value: Any, label: str) -> int:
     return result
 
 
+def _nonnegative_int(value: Any, label: str) -> int:
+    try:
+        result = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{label} must be an integer") from exc
+    if result < 0:
+        raise ConfigError(f"{label} must be non-negative")
+    return result
+
+
 def _positive_float(value: Any, label: str) -> float:
     try:
         result = float(value)
@@ -121,6 +131,23 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
                 raise ConfigError(f"redis source {name!r} requires url")
             if not str(raw.get("stream", "")).strip():
                 raise ConfigError(f"redis source {name!r} requires stream")
+            start = str(raw.get("start", "$"))
+            if not start:
+                raise ConfigError(f"redis source {name!r} requires a non-empty start")
+            _positive_int(raw.get("batch_size", 100), f"redis source {name!r} batch_size")
+            _nonnegative_int(raw.get("block_ms", 1000), f"redis source {name!r} block_ms")
+            event_types = raw.get("event_types", [])
+            if not isinstance(event_types, list) or not all(
+                isinstance(value, str) and value for value in event_types
+            ):
+                raise ConfigError(
+                    f"redis source {name!r} event_types must be an array of strings"
+                )
+            cursor_file = raw.get("cursor_file")
+            if cursor_file is not None and not isinstance(cursor_file, str):
+                raise ConfigError(
+                    f"redis source {name!r} cursor_file must be a string"
+                )
 
         values = dict(raw)
         values.pop("name", None)
