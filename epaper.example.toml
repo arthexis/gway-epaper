@@ -4,7 +4,10 @@
 driver = "text"
 width = 40
 lines = 12
+# Runtime/source poll cadence. Hardware refreshes are independently guarded by
+# min_refresh_seconds and unchanged frames are never sent to the panel.
 refresh_seconds = 2.0
+min_refresh_seconds = 5.0
 font_size = 12
 margin = 4
 

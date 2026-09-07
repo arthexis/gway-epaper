@@ -12,6 +12,7 @@ def build_display(config: DisplayConfig):
         return Waveshare2in13V4Display(
             font_size=config.font_size,
             margin=config.margin,
+            min_refresh_seconds=config.min_refresh_seconds,
         )
     raise ValueError(f"unsupported display driver: {config.driver}")
 
