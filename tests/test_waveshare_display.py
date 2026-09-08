@@ -1,9 +1,11 @@
 from pathlib import Path
 
+import pytest
 from PIL import Image, ImageDraw, ImageFont
 
 from gway_epaper.config import load_config
 from gway_epaper.displays import Waveshare2in13V4Display, build_display
+import gway_epaper.displays.waveshare_2in13_v4 as waveshare_module
 
 
 class FakeClock:
@@ -147,3 +149,26 @@ def test_close_sleeps_initialized_panel_and_allows_reinitialization() -> None:
     clock.now = 1.0
     display.render(["two"])
     assert epd.init_calls == 2
+
+
+def test_gpiozero_import_failure_is_reported_as_hardware_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeBadPinFactory(ImportError):
+        pass
+
+    FakeBadPinFactory.__module__ = "gpiozero.exc"
+
+    def fail_import(_name: str):
+        raise FakeBadPinFactory("Unable to load any default pin factory!")
+
+    monkeypatch.setattr(waveshare_module, "import_module", fail_import)
+
+    display = Waveshare2in13V4Display()
+    with pytest.raises(RuntimeError) as exc_info:
+        display._load()
+
+    message = str(exc_info.value)
+    assert "GPIO initialization failed" in message
+    assert "hardware-access/permissions" in message
+    assert "missing 'required Python module'" not in message
