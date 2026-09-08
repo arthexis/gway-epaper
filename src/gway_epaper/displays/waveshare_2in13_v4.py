@@ -55,7 +55,7 @@ class Waveshare2in13V4Display:
                 ) from exc
             if isinstance(exc, ImportError):
                 missing = getattr(exc, "name", None) or "required Python module"
-                raise RuntimeError(
+                raise ImportError(
                     f"Waveshare 2.13 V4 support is missing {missing!r}. "
                     "On Raspberry Pi Linux, gway-epaper installs waveshare-epd, "
                     "spidev, gpiozero, and lgpio automatically. Run "
