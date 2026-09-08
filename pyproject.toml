@@ -16,6 +16,7 @@ dependencies = [
   "waveshare-epd @ git+https://github.com/waveshareteam/e-Paper.git@a794fbc39656b0f93938d1ffb3fdc77eaed9e9fc#subdirectory=RaspberryPi_JetsonNano/python ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
   "spidev>=3.6 ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
   "gpiozero>=2 ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
+  "lgpio>=0.2.2.0 ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
 ]
 
 [project.optional-dependencies]
