@@ -159,34 +159,34 @@ gw.epaper.run()
 
 ## systemd service lifecycle
 
-On Linux systems using systemd, Gway can install and manage `gway-epaper` as a
-system service:
+`gway.toml` declares the e-paper foreground process under `[service]`. GWAY owns
+the generic systemd lifecycle, so this package does not carry its own unit
+renderer or `systemctl` wrappers.
+
+With a GWAY version that supports manifest-driven services:
 
 ```text
-gway epaper service-install --config /etc/gway-epaper/epaper.toml
-gway epaper service-status
-gway epaper service-restart
-gway epaper service-stop
-gway epaper service-start
-gway epaper service-uninstall
+sudo gway service install --project epaper
+sudo gway service status --project epaper
+sudo gway service restart --project epaper
+sudo gway service stop --project epaper
+sudo gway service start --project epaper
+sudo gway service uninstall --project epaper
 ```
 
-The default unit path is `/etc/systemd/system/gway-epaper.service`. Installation
-writes the unit atomically, runs `systemctl daemon-reload`, enables it, and starts
-it with a restart. The unit uses `Restart=on-failure`, waits for
-`network-online.target`, sends logs to the journal, and executes the exact Python
-interpreter used to install it. The configuration path embedded in the unit is
-absolute, so service startup does not depend on a working directory.
+The default unit is `/etc/systemd/system/gway-epaper.service`. GWAY writes the
+unit atomically, reloads systemd, enables it, and starts it by default. The
+manifest requests `Restart=on-failure` with a five-second delay and starts the
+foreground `gway_epaper.service` module with the project-local `epaper.toml`.
 
-Writing the default unit and controlling systemd normally require elevated
-privileges. When installation is invoked through `sudo`, the generated unit uses
-`SUDO_USER` as its service account rather than running the display process as
-root. An explicit `--user` overrides this behavior. That account must have the
-permissions required for configured log/state files and Raspberry Pi SPI/GPIO.
+When invoked through `sudo`, GWAY preserves `SUDO_USER` as the service account
+unless `--user` overrides it. That account must have the permissions required for
+configured log/state files and Raspberry Pi SPI/GPIO. `--no-enable` and
+`--no-start` are available for staged installation, and `status` returns
+machine-friendly active/enabled state.
 
-For staged installation, `--no-enable` and `--no-start` can suppress those two
-actions. `service-status` returns machine-friendly active/enabled state instead
-of parsing the human-oriented output of `systemctl status`.
+Service lifecycle support for this project depends on the shared GWAY service
+manager introduced in `arthexis/gway#806`.
 
 ## Bootstrap service control without Gway
 
