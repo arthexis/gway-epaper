@@ -39,24 +39,30 @@ class Waveshare2in13V4Display:
             image_module = import_module("PIL.Image")
             draw_module = import_module("PIL.ImageDraw")
             font_module = import_module("PIL.ImageFont")
-        except ImportError as exc:
-            missing = getattr(exc, "name", None) or "required Python module"
-            raise RuntimeError(
-                f"Waveshare 2.13 V4 support is missing {missing!r}. "
-                "On Raspberry Pi Linux, gway-epaper installs waveshare-epd, spidev, "
-                "gpiozero, and lgpio automatically. Run "
-                "'sudo gway upgrade epaper --force'. If pip cannot build/install a "
-                "dependency, install Raspberry Pi OS prerequisites with "
-                "'sudo apt install git build-essential python3-dev', ensure SPI is "
-                "enabled in raspi-config, then run the Gway upgrade again."
-            ) from exc
         except Exception as exc:
+            # Waveshare constructs gpiozero devices while epdconfig is imported.
+            # BadPinFactory is ImportError-compatible, so it must be identified
+            # before treating ImportError as a missing Python dependency.
             if exc.__class__.__module__.startswith("gpiozero"):
                 raise RuntimeError(
-                    "Waveshare GPIO initialization failed. gway-epaper uses gpiozero "
-                    "with the lgpio backend on current Raspberry Pi OS. Run "
-                    "'sudo gway upgrade epaper --force' to install lgpio, then retry. "
+                    "Waveshare GPIO initialization failed before the display driver "
+                    "could load. gpiozero could not access a usable Raspberry Pi GPIO "
+                    "backend. Check that /dev/gpiochip* or /dev/gpiomem exists and is "
+                    "accessible to the user running gway, and that SPI is enabled and "
+                    "/dev/spidev* is accessible. This is a hardware-access/permissions "
+                    "problem, not a missing waveshare-epd dependency. "
                     f"Original error: {exc}"
+                ) from exc
+            if isinstance(exc, ImportError):
+                missing = getattr(exc, "name", None) or "required Python module"
+                raise RuntimeError(
+                    f"Waveshare 2.13 V4 support is missing {missing!r}. "
+                    "On Raspberry Pi Linux, gway-epaper installs waveshare-epd, "
+                    "spidev, gpiozero, and lgpio automatically. Run "
+                    "'sudo gway upgrade epaper --force'. If pip cannot build/install "
+                    "a dependency, install Raspberry Pi OS prerequisites with "
+                    "'sudo apt install git build-essential python3-dev', ensure SPI "
+                    "is enabled in raspi-config, then run the Gway upgrade again."
                 ) from exc
             raise
         self._modules = module, image_module, draw_module, font_module
