@@ -1,5 +1,5 @@
-from pathlib import Path
 import tomllib
+from pathlib import Path
 
 
 def test_raspberry_pi_runtime_dependencies_are_declared() -> None:
