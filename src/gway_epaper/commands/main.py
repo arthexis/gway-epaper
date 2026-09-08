@@ -3,12 +3,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from ..config import ConfigError, load_config
+from ..config import ConfigError, DisplayConfig, load_config
 from ..displays import build_display
 from ..runtime import build_runtime, run_forever
 
 SYSTEM_CONFIG = Path("/etc/gway-epaper/epaper.toml")
 LOCAL_CONFIG = Path("epaper.toml")
+DEFAULT_DIRECT_DISPLAY = DisplayConfig(driver="waveshare_2in13_v4")
 
 
 def _resolve_config(config: Path | None = None) -> Path:
@@ -30,6 +31,17 @@ def _resolve_config(config: Path | None = None) -> Path:
         "configuration not found; pass --config, set EPAPER_CONFIG, or create "
         f"{SYSTEM_CONFIG} or {LOCAL_CONFIG}"
     )
+
+
+def _direct_display_config(config: Path | None = None) -> DisplayConfig:
+    """Resolve direct-command display config, falling back to the supported HAT."""
+
+    try:
+        return load_config(_resolve_config(config)).display
+    except ConfigError:
+        if config is not None or os.environ.get("EPAPER_CONFIG", "").strip():
+            raise
+        return DEFAULT_DIRECT_DISPLAY
 
 
 def validate(config: Path | None = None) -> bool:
@@ -67,10 +79,9 @@ def run(config: Path | None = None) -> None:
 
 
 def write(text: str, config: Path | None = None) -> bool:
-    """Write arbitrary text directly to the configured display."""
+    """Write arbitrary text directly to the configured or default ePaper display."""
 
-    value = load_config(_resolve_config(config))
-    display = build_display(value.display)
+    display = build_display(_direct_display_config(config))
     try:
         return bool(display.render(text.splitlines() or [""]))
     finally:
@@ -80,10 +91,9 @@ def write(text: str, config: Path | None = None) -> bool:
 
 
 def clear(config: Path | None = None) -> bool:
-    """Clear the configured display."""
+    """Clear the configured or default ePaper display."""
 
-    value = load_config(_resolve_config(config))
-    display = build_display(value.display)
+    display = build_display(_direct_display_config(config))
     try:
         clear_display = getattr(display, "clear", None)
         if clear_display is not None:
