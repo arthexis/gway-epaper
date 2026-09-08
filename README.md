@@ -157,6 +157,37 @@ gw.epaper.status()
 gw.epaper.run()
 ```
 
+## systemd service lifecycle
+
+`gway.toml` declares the e-paper foreground process under `[service]`. GWAY owns
+the generic systemd lifecycle, so this package does not carry its own unit
+renderer or `systemctl` wrappers.
+
+With a GWAY version that supports manifest-driven services:
+
+```text
+sudo gway service install --project epaper
+sudo gway service status --project epaper
+sudo gway service restart --project epaper
+sudo gway service stop --project epaper
+sudo gway service start --project epaper
+sudo gway service uninstall --project epaper
+```
+
+The default unit is `/etc/systemd/system/gway-epaper.service`. GWAY writes the
+unit atomically, reloads systemd, enables it, and starts it by default. The
+manifest requests `Restart=on-failure` with a five-second delay and starts the
+foreground `gway_epaper.service` module with the project-local `epaper.toml`.
+
+When invoked through `sudo`, GWAY preserves `SUDO_USER` as the service account
+unless `--user` overrides it. That account must have the permissions required for
+configured log/state files and Raspberry Pi SPI/GPIO. `--no-enable` and
+`--no-start` are available for staged installation, and `status` returns
+machine-friendly active/enabled state.
+
+Service lifecycle support for this project depends on the shared GWAY service
+manager introduced in `arthexis/gway#806`.
+
 ## Bootstrap service control without Gway
 
 The repository includes thin bootstrap wrappers for cases where Gway is not

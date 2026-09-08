@@ -5,3 +5,9 @@ aliases = ["gway-epaper"]
 [adapter]
 type = "python"
 module = "gway_epaper.commands.main"
+
+[service]
+description = "GWAY e-paper display service"
+command = ["{python}", "-m", "gway_epaper.service", "{project}/epaper.toml"]
+restart = "on-failure"
+restart_sec = 5
