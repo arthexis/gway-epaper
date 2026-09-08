@@ -82,7 +82,7 @@ def status(config: Path | None = None) -> dict[str, object]:
 
 def run(config: Path | None = None) -> None:
     """Run the foreground aggregation loop using the configured backend."""
-    run_forever(config)
+    run_forever(_resolve_config(config))
 
 
 def service_install(
@@ -143,7 +143,6 @@ def service_status(
     """Return machine-friendly systemd active/enabled state."""
 
     return get_service_status(unit_path=unit_path)
-    run_forever(_resolve_config(config))
 
 
 def write(text: str, config: Path | None = None) -> bool:
