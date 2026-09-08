@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
+import gway_epaper.displays.waveshare_2in13_v4 as waveshare_module
 from gway_epaper.config import load_config
 from gway_epaper.displays import Waveshare2in13V4Display, build_display
-import gway_epaper.displays.waveshare_2in13_v4 as waveshare_module
 
 
 class FakeClock:
