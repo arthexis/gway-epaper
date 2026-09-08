@@ -44,11 +44,21 @@ class Waveshare2in13V4Display:
             raise RuntimeError(
                 f"Waveshare 2.13 V4 support is missing {missing!r}. "
                 "On Raspberry Pi Linux, gway-epaper installs waveshare-epd, spidev, "
-                "and gpiozero automatically. Run 'sudo gway upgrade epaper --force'. "
-                "If pip cannot build/install a dependency, install Raspberry Pi OS "
-                "prerequisites with 'sudo apt install git build-essential python3-dev', "
-                "ensure SPI is enabled in raspi-config, then run the Gway upgrade again."
+                "gpiozero, and lgpio automatically. Run "
+                "'sudo gway upgrade epaper --force'. If pip cannot build/install a "
+                "dependency, install Raspberry Pi OS prerequisites with "
+                "'sudo apt install git build-essential python3-dev', ensure SPI is "
+                "enabled in raspi-config, then run the Gway upgrade again."
             ) from exc
+        except Exception as exc:
+            if exc.__class__.__module__.startswith("gpiozero"):
+                raise RuntimeError(
+                    "Waveshare GPIO initialization failed. gway-epaper uses gpiozero "
+                    "with the lgpio backend on current Raspberry Pi OS. Run "
+                    "'sudo gway upgrade epaper --force' to install lgpio, then retry. "
+                    f"Original error: {exc}"
+                ) from exc
+            raise
         self._modules = module, image_module, draw_module, font_module
         return self._modules
 
