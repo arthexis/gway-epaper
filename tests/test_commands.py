@@ -67,3 +67,36 @@ def test_missing_default_config_has_actionable_error(
 
     with pytest.raises(ConfigError, match="pass --config, set EPAPER_CONFIG"):
         main._resolve_config()
+
+
+def test_direct_display_defaults_to_waveshare_without_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("EPAPER_CONFIG", raising=False)
+    monkeypatch.setattr(main, "SYSTEM_CONFIG", tmp_path / "system.toml")
+    monkeypatch.setattr(main, "LOCAL_CONFIG", tmp_path / "local.toml")
+
+    display = main._direct_display_config()
+
+    assert display.driver == "waveshare_2in13_v4"
+
+
+def test_direct_display_honors_existing_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config = tmp_path / "epaper.toml"
+    config.write_text('[display]\ndriver = "text"\n', encoding="utf-8")
+    monkeypatch.delenv("EPAPER_CONFIG", raising=False)
+    monkeypatch.setattr(main, "SYSTEM_CONFIG", tmp_path / "system.toml")
+    monkeypatch.setattr(main, "LOCAL_CONFIG", config)
+
+    display = main._direct_display_config()
+
+    assert display.driver == "text"
+
+
+def test_direct_display_does_not_hide_bad_explicit_config(tmp_path: Path) -> None:
+    missing = tmp_path / "missing.toml"
+
+    with pytest.raises(ConfigError, match="configuration not found"):
+        main._direct_display_config(missing)
