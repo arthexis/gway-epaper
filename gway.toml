@@ -4,4 +4,4 @@ aliases = ["gway-epaper"]
 
 [adapter]
 type = "python"
-module = "gway_epaper.commands"
+module = "gway_epaper.commands.main"

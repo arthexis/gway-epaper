@@ -40,10 +40,25 @@ class Waveshare2in13V4Display:
             draw_module = import_module("PIL.ImageDraw")
             font_module = import_module("PIL.ImageFont")
         except ImportError as exc:
+            missing = getattr(exc, "name", None) or "required Python module"
             raise RuntimeError(
-                "Waveshare 2.13 V4 support requires the 'epaper' extra and "
-                "Waveshare's waveshare_epd Python package"
+                f"Waveshare 2.13 V4 support is missing {missing!r}. "
+                "On Raspberry Pi Linux, gway-epaper installs waveshare-epd, spidev, "
+                "gpiozero, and lgpio automatically. Run "
+                "'sudo gway upgrade epaper --force'. If pip cannot build/install a "
+                "dependency, install Raspberry Pi OS prerequisites with "
+                "'sudo apt install git build-essential python3-dev', ensure SPI is "
+                "enabled in raspi-config, then run the Gway upgrade again."
             ) from exc
+        except Exception as exc:
+            if exc.__class__.__module__.startswith("gpiozero"):
+                raise RuntimeError(
+                    "Waveshare GPIO initialization failed. gway-epaper uses gpiozero "
+                    "with the lgpio backend on current Raspberry Pi OS. Run "
+                    "'sudo gway upgrade epaper --force' to install lgpio, then retry. "
+                    f"Original error: {exc}"
+                ) from exc
+            raise
         self._modules = module, image_module, draw_module, font_module
         return self._modules
 
@@ -96,6 +111,16 @@ class Waveshare2in13V4Display:
         self._last_rows = visible_rows
         self._pending_rows = None
         self._last_refresh_at = now
+        return True
+
+    def clear(self) -> bool:
+        """Immediately clear the physical panel, bypassing refresh coalescing."""
+
+        epd = self._device()
+        epd.Clear(0xFF)
+        self._last_rows = ()
+        self._pending_rows = None
+        self._last_refresh_at = self._clock()
         return True
 
     def close(self) -> None:
