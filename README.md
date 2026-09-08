@@ -17,8 +17,26 @@ The first hardware backend is the **Waveshare 2.13-inch e-Paper HAT V4**, the
 HAT` with the `V4` revision marker.
 
 The backend uses Waveshare's `waveshare_epd.epd2in13_V4` driver and Pillow for
-text rendering. Hardware imports are lazy and cached, so development and CI do
-not require GPIO/SPI libraries or a Raspberry Pi.
+text rendering. On Linux Raspberry Pi systems (`aarch64` and `armv7l`), the
+pinned official Waveshare Python package is installed automatically as a normal
+`gway-epaper` dependency, so `gway install epaper` and `gway upgrade epaper`
+refresh the hardware driver together with the package. Hardware imports remain
+lazy, and non-Raspberry-Pi CI/development hosts do not install the GPIO driver.
+
+The Waveshare dependency is installed from the official
+`waveshareteam/e-Paper` repository and is pinned to a known commit. Installing it
+requires `git`; its Raspberry Pi dependencies can also require a compiler and
+Python headers. On Raspberry Pi OS, if dependency installation reports one of
+those prerequisites missing, install them with:
+
+```text
+sudo apt update
+sudo apt install -y git build-essential python3-dev
+sudo gway upgrade epaper --force
+```
+
+SPI must also be enabled on the Raspberry Pi. Use `sudo raspi-config`, open
+**Interface Options > SPI**, enable it, and reboot if requested.
 
 ```toml
 [display]
@@ -38,10 +56,9 @@ window are coalesced so only the newest frame is rendered when the next refresh
 is due. Set `min_refresh_seconds = 0` only when explicitly testing unrestricted
 refreshes.
 
-The HAT uses the Raspberry Pi SPI/GPIO interface. SPI must be enabled on the Pi.
-The Waveshare driver itself is intentionally not vendored into this repository.
-The current backend uses full refreshes; partial-refresh policy remains deferred
-until the real V4 panel has been validated for orientation, ghosting, and cadence.
+The HAT uses the Raspberry Pi SPI/GPIO interface. The current backend uses full
+refreshes; partial-refresh policy remains deferred until the real V4 panel has
+been validated for orientation, ghosting, and cadence.
 
 ## Sources
 
@@ -125,6 +142,8 @@ gway epaper validate
 gway epaper preview
 gway epaper status
 gway epaper run
+gway epaper clear
+gway epaper write --text "Hello"
 ```
 
 The Python facade mirrors the same namespace:

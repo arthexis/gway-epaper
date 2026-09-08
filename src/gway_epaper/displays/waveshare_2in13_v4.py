@@ -41,8 +41,12 @@ class Waveshare2in13V4Display:
             font_module = import_module("PIL.ImageFont")
         except ImportError as exc:
             raise RuntimeError(
-                "Waveshare 2.13 V4 support requires the 'epaper' extra and "
-                "Waveshare's waveshare_epd Python package"
+                "Waveshare 2.13 V4 support is not installed. On Raspberry Pi Linux, "
+                "gway install/upgrade installs the pinned Waveshare driver automatically. "
+                "Run 'sudo gway upgrade epaper --force'. If dependency installation fails, "
+                "install the Raspberry Pi OS prerequisites with "
+                "'sudo apt install git build-essential python3-dev', ensure SPI is enabled, "
+                "then run the Gway upgrade again."
             ) from exc
         self._modules = module, image_module, draw_module, font_module
         return self._modules
