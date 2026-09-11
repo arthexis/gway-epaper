@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 
 
 class ConfigError(ValueError):
