@@ -7,7 +7,7 @@ name = "gway-epaper"
 version = "0.1.0"
 description = "Continuous multi-source printout service for Gway ePaper displays"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [
   { name = "Rafael J. Guillén-Osorio" },
@@ -34,5 +34,5 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 line-length = 88
