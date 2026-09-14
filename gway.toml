@@ -6,6 +6,10 @@ aliases = ["gway-epaper"]
 type = "python"
 module = "gway_epaper.commands.main"
 
+[lifecycle]
+install = "gway_epaper.lifecycle:install"
+upgrade = "gway_epaper.lifecycle:upgrade"
+
 [service]
 description = "GWAY e-paper display service"
 command = ["{python}", "-m", "gway_epaper.service", "{project}/epaper.toml"]
