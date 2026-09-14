@@ -1,0 +1,21 @@
+[display]
+driver = "waveshare_2in13_v4"
+width = 40
+lines = 12
+refresh_seconds = 2.0
+min_refresh_seconds = 5.0
+font_size = 12
+margin = 4
+
+[printer]
+prefix_source = false
+timestamp = true
+
+[[sources]]
+name = "auth-events"
+type = "celery"
+url = "redis://localhost:6379/0"
+queue = "ocpp.authorization"
+event_types = ["ocpp.authorization"]
+batch_size = 100
+block_seconds = 1.0
