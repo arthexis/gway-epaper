@@ -38,6 +38,21 @@ block_ms = 250
     assert [source.type for source in config.sources] == ["file", "redis"]
 
 
+def test_shipped_config_uses_dedicated_authorization_queue() -> None:
+    path = Path(__file__).resolve().parents[1] / "epaper.toml"
+
+    config = load_config(path)
+
+    assert config.display.driver == "waveshare_2in13_v4"
+    assert len(config.sources) == 1
+    source = config.sources[0]
+    assert source.name == "auth-events"
+    assert source.type == "celery"
+    assert source.values["queue"] == "ocpp.authorization"
+    assert source.values["event_types"] == ["ocpp.authorization"]
+    assert "cursor_file" not in source.values
+
+
 def test_load_config_rejects_duplicate_source_names(tmp_path: Path) -> None:
     path = tmp_path / "epaper.toml"
     path.write_text(
