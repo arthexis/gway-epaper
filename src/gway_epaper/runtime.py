@@ -6,7 +6,7 @@ from pathlib import Path
 from .config import EpaperConfig, load_config
 from .displays import build_display
 from .printer import PrinterBuffer
-from .sources import FileSource, KombuQueueSource, RedisStreamSource
+from .sources import CeleryQueueSource, FileSource, RedisStreamSource
 
 
 class Runtime:
@@ -43,19 +43,20 @@ class Runtime:
             for source in config.sources
             if source.type == "redis"
         ]
-        self.queue_sources = [
-            KombuQueueSource(
+        self.celery_sources = [
+            CeleryQueueSource(
                 source.name,
                 url=str(source.values["url"]),
-                queue_name=str(source.values["queue"]),
+                queue=str(source.values["queue"]),
                 batch_size=int(source.values.get("batch_size", 100)),
                 block_seconds=float(source.values.get("block_seconds", 1.0)),
                 event_types=tuple(source.values.get("event_types", ())),
             )
             for source in config.sources
-            if source.type == "queue"
+            if source.type == "celery"
         ]
         self._redis_blocking_index = 0
+        self._celery_blocking_index = 0
 
     def _poll_file_sources(self) -> None:
         for source in self.file_sources:
@@ -83,22 +84,34 @@ class Runtime:
 
         self._redis_blocking_index = (blocking_index + 1) % source_count
 
-    def _poll_queue_sources(self) -> None:
-        for source in self.queue_sources:
-            items = source.read_available()
+    def _poll_celery_sources(self) -> None:
+        if not self.celery_sources:
+            return
+
+        source_count = len(self.celery_sources)
+        blocking_index = self._celery_blocking_index % source_count
+        order = [
+            self.celery_sources[(blocking_index + offset) % source_count]
+            for offset in range(source_count)
+        ]
+
+        for offset, source in enumerate(order):
+            items = source.read_available(block_seconds=None if offset == 0 else 0)
             for item in items:
                 self.printer.append(item)
             source.commit_batch()
 
+        self._celery_blocking_index = (blocking_index + 1) % source_count
+
     def poll_once(self):
         self._poll_file_sources()
         self._poll_redis_sources()
-        self._poll_queue_sources()
+        self._poll_celery_sources()
 
         return self.display.render(self.printer.snapshot())
 
     def close(self) -> None:
-        for source in self.queue_sources:
+        for source in self.celery_sources:
             source.close()
         close = getattr(self.display, "close", None)
         if close is not None:

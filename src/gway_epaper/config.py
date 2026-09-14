@@ -94,11 +94,12 @@ def _validate_cursor_file(value: Any, label: str) -> None:
         raise ConfigError(f"{label} must not be empty")
 
 
-def _validate_event_types(value: Any, label: str) -> None:
-    if not isinstance(value, list) or not all(
-        isinstance(event_type, str) and event_type for event_type in value
+def _validate_event_types(raw: dict[str, Any], label: str) -> None:
+    event_types = raw.get("event_types", [])
+    if not isinstance(event_types, list) or not all(
+        isinstance(value, str) and value for value in event_types
     ):
-        raise ConfigError(f"{label} must be an array of strings")
+        raise ConfigError(f"{label} event_types must be an array of strings")
 
 
 def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
@@ -157,9 +158,9 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             raise ConfigError(f"sources[{index}].name is required")
         if name in names:
             raise ConfigError(f"duplicate source name: {name}")
-        if source_type not in {"file", "redis", "queue"}:
+        if source_type not in {"file", "redis", "celery"}:
             raise ConfigError(
-                f"sources[{index}].type must be 'file', 'redis', or 'queue'"
+                f"sources[{index}].type must be 'file', 'redis', or 'celery'"
             )
 
         if source_type == "file":
@@ -191,30 +192,24 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             _nonnegative_int(
                 raw.get("block_ms", 1000), f"redis source {name!r} block_ms"
             )
-            _validate_event_types(
-                raw.get("event_types", []),
-                f"redis source {name!r} event_types",
-            )
+            _validate_event_types(raw, f"redis source {name!r}")
             _validate_cursor_file(
                 raw.get("cursor_file"), f"redis source {name!r} cursor_file"
             )
 
-        if source_type == "queue":
+        if source_type == "celery":
             if not str(raw.get("url", "")).strip():
-                raise ConfigError(f"queue source {name!r} requires url")
+                raise ConfigError(f"celery source {name!r} requires url")
             if not str(raw.get("queue", "")).strip():
-                raise ConfigError(f"queue source {name!r} requires queue")
+                raise ConfigError(f"celery source {name!r} requires queue")
             _positive_int(
-                raw.get("batch_size", 100), f"queue source {name!r} batch_size"
+                raw.get("batch_size", 100), f"celery source {name!r} batch_size"
             )
             _nonnegative_float(
                 raw.get("block_seconds", 1.0),
-                f"queue source {name!r} block_seconds",
+                f"celery source {name!r} block_seconds",
             )
-            _validate_event_types(
-                raw.get("event_types", []),
-                f"queue source {name!r} event_types",
-            )
+            _validate_event_types(raw, f"celery source {name!r}")
 
         values = dict(raw)
         values.pop("name", None)

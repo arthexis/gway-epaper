@@ -13,7 +13,7 @@ timestamp = true
 
 [[sources]]
 name = "auth-events"
-type = "queue"
+type = "celery"
 url = "redis://localhost:6379/0"
 queue = "ocpp.authorization"
 event_types = ["ocpp.authorization"]
