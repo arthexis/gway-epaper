@@ -38,6 +38,20 @@ block_ms = 250
     assert [source.type for source in config.sources] == ["file", "redis"]
 
 
+def test_shipped_config_reads_ocpp_authorization_events() -> None:
+    path = Path(__file__).resolve().parents[1] / "epaper.toml"
+
+    config = load_config(path)
+
+    assert config.display.driver == "waveshare_2in13_v4"
+    assert len(config.sources) == 1
+    source = config.sources[0]
+    assert source.name == "auth-events"
+    assert source.type == "redis"
+    assert source.values["stream"] == "arthexis:events"
+    assert source.values["event_types"] == ["ocpp.authorization"]
+
+
 def test_load_config_rejects_duplicate_source_names(tmp_path: Path) -> None:
     path = tmp_path / "epaper.toml"
     path.write_text(
