@@ -14,6 +14,7 @@ authors = [
 ]
 dependencies = [
   "tomli>=2; python_version < '3.11'",
+  "redis>=6,<9",
   "Pillow>=10 ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
   "spidev>=3.6 ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
   "gpiozero>=2 ; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'armv7l')",
@@ -21,7 +22,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-redis = ["redis>=6,<9"]
 epaper = ["Pillow>=10"]
 dev = [
   "pytest>=8",
