@@ -13,11 +13,9 @@ timestamp = true
 
 [[sources]]
 name = "auth-events"
-type = "redis"
+type = "queue"
 url = "redis://localhost:6379/0"
-stream = "arthexis:events"
+queue = "ocpp.authorization"
 event_types = ["ocpp.authorization"]
-start = "$"
 batch_size = 100
-block_ms = 1000
-cursor_file = "/var/lib/gway-epaper/auth.cursor"
+block_seconds = 1.0
