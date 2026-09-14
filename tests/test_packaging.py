@@ -15,6 +15,7 @@ def test_raspberry_pi_runtime_dependencies_are_declared() -> None:
     joined = "\n".join(dependencies)
 
     assert "waveshare-epd @ git+https://github.com/waveshareteam/e-Paper.git" not in joined
+    assert "Pillow>=10" in joined
     assert "spidev>=3.6" in joined
     assert "gpiozero>=2" in joined
     assert "lgpio>=0.2.2.0" in joined
