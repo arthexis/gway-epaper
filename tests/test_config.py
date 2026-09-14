@@ -5,7 +5,7 @@ import pytest
 from gway_epaper.config import ConfigError, load_config
 
 
-def test_load_config_accepts_file_and_redis_sources(tmp_path: Path) -> None:
+def test_load_config_accepts_file_redis_and_queue_sources(tmp_path: Path) -> None:
     path = tmp_path / "epaper.toml"
     path.write_text(
         """
@@ -20,13 +20,22 @@ type = "file"
 path = "/tmp/example.log"
 
 [[sources]]
-name = "auth"
+name = "stream"
 type = "redis"
 url = "redis://localhost:6379/0"
 stream = "arthexis:events"
-event_types = ["ocpp.authorization"]
+event_types = ["other.event"]
 batch_size = 50
 block_ms = 250
+
+[[sources]]
+name = "auth"
+type = "queue"
+url = "redis://localhost:6379/0"
+queue = "ocpp.authorization"
+event_types = ["ocpp.authorization"]
+batch_size = 25
+block_seconds = 0.5
 """,
         encoding="utf-8",
     )
@@ -35,10 +44,10 @@ block_ms = 250
 
     assert config.display.width == 32
     assert config.display.lines == 8
-    assert [source.type for source in config.sources] == ["file", "redis"]
+    assert [source.type for source in config.sources] == ["file", "redis", "queue"]
 
 
-def test_shipped_config_reads_ocpp_authorization_events() -> None:
+def test_shipped_config_reads_ocpp_authorization_queue() -> None:
     path = Path(__file__).resolve().parents[1] / "epaper.toml"
 
     config = load_config(path)
@@ -47,9 +56,10 @@ def test_shipped_config_reads_ocpp_authorization_events() -> None:
     assert len(config.sources) == 1
     source = config.sources[0]
     assert source.name == "auth-events"
-    assert source.type == "redis"
-    assert source.values["stream"] == "arthexis:events"
+    assert source.type == "queue"
+    assert source.values["queue"] == "ocpp.authorization"
     assert source.values["event_types"] == ["ocpp.authorization"]
+    assert "cursor_file" not in source.values
 
 
 def test_load_config_rejects_duplicate_source_names(tmp_path: Path) -> None:
@@ -124,4 +134,21 @@ cursor_file = ""
     )
 
     with pytest.raises(ConfigError, match="cursor_file must not be empty"):
+        load_config(path)
+
+
+def test_load_config_rejects_queue_without_name(tmp_path: Path) -> None:
+    path = tmp_path / "epaper.toml"
+    path.write_text(
+        """
+[[sources]]
+name = "auth"
+type = "queue"
+url = "redis://localhost:6379/0"
+queue = ""
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="requires queue"):
         load_config(path)
