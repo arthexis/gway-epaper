@@ -22,6 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 redis = ["redis>=6,<9"]
+celery = ["kombu>=5.3,<6"]
 epaper = ["Pillow>=10"]
 dev = [
   "pytest>=8",

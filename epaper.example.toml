@@ -24,6 +24,7 @@ cursor_file = "/var/lib/gway-epaper/arthexis-log.cursor"
 max_bytes = 65536
 poll_seconds = 0.5
 
+# Existing Redis Stream event source.
 [[sources]]
 name = "auth-events"
 type = "redis"
@@ -34,3 +35,14 @@ start = "$"
 batch_size = 100
 block_ms = 1000
 cursor_file = "/var/lib/gway-epaper/auth.cursor"
+
+# Dedicated broker queue alternative. Install with: gway-epaper[celery]
+# Use this when Arthexis publishes authorization events to its own queue.
+[[sources]]
+name = "auth-queue"
+type = "celery"
+url = "redis://localhost:6379/0"
+queue = "ocpp.authorization"
+event_types = ["ocpp.authorization"]
+batch_size = 100
+block_seconds = 1.0
