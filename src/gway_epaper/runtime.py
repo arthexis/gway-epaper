@@ -6,7 +6,7 @@ from pathlib import Path
 from .config import EpaperConfig, load_config
 from .displays import build_display
 from .printer import PrinterBuffer
-from .sources import FileSource, RedisStreamSource
+from .sources import FileSource, KombuQueueSource, RedisStreamSource
 
 
 class Runtime:
@@ -43,6 +43,18 @@ class Runtime:
             for source in config.sources
             if source.type == "redis"
         ]
+        self.queue_sources = [
+            KombuQueueSource(
+                source.name,
+                url=str(source.values["url"]),
+                queue_name=str(source.values["queue"]),
+                batch_size=int(source.values.get("batch_size", 100)),
+                block_seconds=float(source.values.get("block_seconds", 1.0)),
+                event_types=tuple(source.values.get("event_types", ())),
+            )
+            for source in config.sources
+            if source.type == "queue"
+        ]
         self._redis_blocking_index = 0
 
     def _poll_file_sources(self) -> None:
@@ -71,13 +83,23 @@ class Runtime:
 
         self._redis_blocking_index = (blocking_index + 1) % source_count
 
+    def _poll_queue_sources(self) -> None:
+        for source in self.queue_sources:
+            items = source.read_available()
+            for item in items:
+                self.printer.append(item)
+            source.commit_batch()
+
     def poll_once(self):
         self._poll_file_sources()
         self._poll_redis_sources()
+        self._poll_queue_sources()
 
         return self.display.render(self.printer.snapshot())
 
     def close(self) -> None:
+        for source in self.queue_sources:
+            source.close()
         close = getattr(self.display, "close", None)
         if close is not None:
             close()
