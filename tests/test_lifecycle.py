@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from gway_epaper import lifecycle
 
 
@@ -13,10 +11,18 @@ def test_waveshare_install_uses_sparse_checkout(monkeypatch) -> None:
     lifecycle.install()
 
     joined = [" ".join(command) for command in commands]
-    assert any("sparse-checkout set RaspberryPi_JetsonNano/python" in command for command in joined)
-    assert any("fetch --depth=1 --filter=blob:none --no-tags origin" in command for command in joined)
+    assert any(
+        "sparse-checkout set RaspberryPi_JetsonNano/python" in command
+        for command in joined
+    )
+    assert any(
+        "fetch --depth=1 --filter=blob:none --no-tags origin" in command
+        for command in joined
+    )
     assert any("checkout --detach FETCH_HEAD" in command for command in joined)
-    assert any("pip install" in command and "--no-deps" in command for command in joined)
+    assert any(
+        "pip install" in command and "--no-deps" in command for command in joined
+    )
     assert not any(command[:2] == ["git", "clone"] for command in commands)
 
 
