@@ -12,49 +12,11 @@ from .sources import CeleryQueueSource, FileSource, RedisStreamSource
 class Runtime:
     def __init__(self, config: EpaperConfig) -> None:
         self.config = config
-        self.printer = PrinterBuffer(
-            width=config.display.width,
-            lines=config.display.lines,
-            config=config.printer,
-        )
+        self.printer = PrinterBuffer(width=config.display.width, lines=config.display.lines, config=config.printer)
         self.display = build_display(config.display)
-        self.file_sources = [
-            FileSource(
-                source.name,
-                source.values["path"],
-                start=str(source.values.get("start", "end")),
-                cursor_file=source.values.get("cursor_file"),
-                max_bytes=int(source.values.get("max_bytes", 65536)),
-            )
-            for source in config.sources
-            if source.type == "file"
-        ]
-        self.redis_sources = [
-            RedisStreamSource(
-                source.name,
-                url=str(source.values["url"]),
-                stream=str(source.values["stream"]),
-                start=str(source.values.get("start", "$")),
-                batch_size=int(source.values.get("batch_size", 100)),
-                block_ms=int(source.values.get("block_ms", 1000)),
-                cursor_file=source.values.get("cursor_file"),
-                event_types=tuple(source.values.get("event_types", ())),
-            )
-            for source in config.sources
-            if source.type == "redis"
-        ]
-        self.celery_sources = [
-            CeleryQueueSource(
-                source.name,
-                url=str(source.values["url"]),
-                queue=str(source.values["queue"]),
-                batch_size=int(source.values.get("batch_size", 100)),
-                block_seconds=float(source.values.get("block_seconds", 1.0)),
-                event_types=tuple(source.values.get("event_types", ())),
-            )
-            for source in config.sources
-            if source.type == "celery"
-        ]
+        self.file_sources = [FileSource(source.name, source.values["path"], start=str(source.values.get("start", "end")), cursor_file=source.values.get("cursor_file"), max_bytes=int(source.values.get("max_bytes", 65536))) for source in config.sources if source.type == "file"]
+        self.redis_sources = [RedisStreamSource(source.name, url=str(source.values["url"]), stream=str(source.values["stream"]), start=str(source.values.get("start", "$")), batch_size=int(source.values.get("batch_size", 100)), block_ms=int(source.values.get("block_ms", 1000)), cursor_file=source.values.get("cursor_file"), event_types=tuple(source.values.get("event_types", ()))) for source in config.sources if source.type == "redis"]
+        self.celery_sources = [CeleryQueueSource(source.name, url=str(source.values["url"]), queue=str(source.values["queue"]), batch_size=int(source.values.get("batch_size", 100)), block_seconds=float(source.values.get("block_seconds", 1.0)), event_types=tuple(source.values.get("event_types", ()))) for source in config.sources if source.type == "celery"]
         self._redis_blocking_index = 0
         self._celery_blocking_index = 0
 
@@ -68,47 +30,39 @@ class Runtime:
     def _poll_redis_sources(self) -> None:
         if not self.redis_sources:
             return
-
         source_count = len(self.redis_sources)
         blocking_index = self._redis_blocking_index % source_count
-        order = [
-            self.redis_sources[(blocking_index + offset) % source_count]
-            for offset in range(source_count)
-        ]
-
+        order = [self.redis_sources[(blocking_index + offset) % source_count] for offset in range(source_count)]
         for offset, source in enumerate(order):
             items = source.read_available(block_ms=None if offset == 0 else 0)
             for item in items:
                 self.printer.append(item)
             source.commit_batch()
-
         self._redis_blocking_index = (blocking_index + 1) % source_count
 
     def _poll_celery_sources(self) -> None:
         if not self.celery_sources:
             return
-
         source_count = len(self.celery_sources)
         blocking_index = self._celery_blocking_index % source_count
-        order = [
-            self.celery_sources[(blocking_index + offset) % source_count]
-            for offset in range(source_count)
-        ]
-
+        order = [self.celery_sources[(blocking_index + offset) % source_count] for offset in range(source_count)]
         for offset, source in enumerate(order):
             items = source.read_available(block_seconds=None if offset == 0 else 0)
             for item in items:
                 self.printer.append(item)
             source.commit_batch()
-
         self._celery_blocking_index = (blocking_index + 1) % source_count
 
     def poll_once(self):
         self._poll_file_sources()
         self._poll_redis_sources()
         self._poll_celery_sources()
-
-        return self.display.render(self.printer.snapshot())
+        if not self.printer.dirty:
+            return False
+        rendered = self.display.render(self.printer.snapshot())
+        if rendered:
+            self.printer.mark_clean()
+        return rendered
 
     def close(self) -> None:
         for source in self.celery_sources:
