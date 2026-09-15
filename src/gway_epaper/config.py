@@ -20,6 +20,7 @@ class DisplayConfig:
     width: int = 40
     lines: int = 12
     refresh_seconds: float = 2.0
+    font: str = "DejaVuSansMono.ttf"
     font_size: int = 12
     margin: int = 4
     min_refresh_seconds: float = 5.0
@@ -126,6 +127,9 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
     driver = str(display_data.get("driver", "text")).strip()
     if driver not in {"text", "waveshare_2in13_v4"}:
         raise ConfigError(f"unsupported display driver {driver!r}")
+    font = str(display_data.get("font", "DejaVuSansMono.ttf")).strip()
+    if not font:
+        raise ConfigError("display.font must not be empty")
 
     display = DisplayConfig(
         driver=driver,
@@ -135,6 +139,7 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             display_data.get("refresh_seconds", 2.0),
             "display.refresh_seconds",
         ),
+        font=font,
         font_size=_positive_int(display_data.get("font_size", 12), "display.font_size"),
         margin=_nonnegative_int(display_data.get("margin", 4), "display.margin"),
         min_refresh_seconds=_nonnegative_float(
