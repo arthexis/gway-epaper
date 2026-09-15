@@ -86,6 +86,79 @@ class Waveshare2in13V4Display:
             or now - self._last_refresh_at >= self.min_refresh_seconds
         )
 
+    @staticmethod
+    def _text_width(draw, text: str, font) -> float:
+        if not text:
+            return 0
+        left, _, right, _ = draw.textbbox((0, 0), text, font=font)
+        return right - left
+
+    @classmethod
+    def _split_oversized_word(cls, draw, word: str, font, max_width: int) -> list[str]:
+        """Split a single word at glyph boundaries when it cannot fit one line."""
+
+        chunks: list[str] = []
+        current = ""
+        for character in word:
+            candidate = current + character
+            if current and cls._text_width(draw, candidate, font) > max_width:
+                chunks.append(current)
+                current = character
+            else:
+                current = candidate
+        if current:
+            chunks.append(current)
+        return chunks or [""]
+
+    @classmethod
+    def _wrap_paragraph(cls, draw, text: str, font, max_width: int) -> list[str]:
+        """Wrap one logical line using the selected font's measured pixel width."""
+
+        if not text:
+            return [""]
+
+        words = text.split()
+        if not words:
+            return [""]
+
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            parts = (
+                [word]
+                if cls._text_width(draw, word, font) <= max_width
+                else cls._split_oversized_word(draw, word, font, max_width)
+            )
+            for index, part in enumerate(parts):
+                candidate = f"{current} {part}" if current else part
+                if cls._text_width(draw, candidate, font) <= max_width:
+                    current = candidate
+                else:
+                    if current:
+                        lines.append(current)
+                    current = part
+
+                # A split word must continue on a fresh physical line. Without this,
+                # adjacent chunks could be rejoined into an over-wide line.
+                if index < len(parts) - 1 and current:
+                    lines.append(current)
+                    current = ""
+
+        if current:
+            lines.append(current)
+        return lines or [""]
+
+    @classmethod
+    def _wrap_rows(cls, draw, rows: Sequence[str], font, max_width: int) -> tuple[str, ...]:
+        """Preserve explicit line breaks while wrapping each line to pixel width."""
+
+        wrapped: list[str] = []
+        for row in rows:
+            logical_lines = str(row).split("\n")
+            for logical_line in logical_lines:
+                wrapped.extend(cls._wrap_paragraph(draw, logical_line, font, max_width))
+        return tuple(wrapped)
+
     def render(self, rows: Sequence[str]) -> bool:
         requested = tuple(rows)
         if requested == self._last_rows and self._pending_rows is None:
@@ -96,7 +169,7 @@ class Waveshare2in13V4Display:
         if not self._refresh_due(now):
             return False
 
-        visible_rows = self._pending_rows
+        requested_rows = self._pending_rows
         epd = self._device()
         _, image_module, draw_module, font_module = self._load()
 
@@ -110,16 +183,18 @@ class Waveshare2in13V4Display:
         except OSError:
             font = font_module.load_default()
 
+        max_text_width = max(1, epd.height - 2 * self.margin)
+        wrapped_rows = self._wrap_rows(draw, requested_rows, font, max_text_width)
         line_height = self.font_size + 2
         capacity = max(1, (epd.width - 2 * self.margin) // line_height)
-        visible = visible_rows[-capacity:]
+        visible = wrapped_rows[-capacity:]
         y = self.margin
         for row in visible:
             draw.text((self.margin, y), row, font=font, fill=0)
             y += line_height
 
         epd.display(epd.getbuffer(image))
-        self._last_rows = visible_rows
+        self._last_rows = requested_rows
         self._pending_rows = None
         self._last_refresh_at = now
         return True
