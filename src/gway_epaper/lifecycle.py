@@ -9,6 +9,8 @@ from pathlib import Path
 WAVESHARE_REPOSITORY = "https://github.com/waveshareteam/e-Paper.git"
 WAVESHARE_REVISION = "a794fbc39656b0f93938d1ffb3fdc77eaed9e9fc"
 WAVESHARE_SUBDIRECTORY = "RaspberryPi_JetsonNano/python"
+SERVICE_UNIT = "gway-epaper.service"
+SYSTEMD_UNIT_DIRECTORY = Path("/etc/systemd/system")
 _SUPPORTED_MACHINES = {"aarch64", "armv7l"}
 
 
@@ -71,9 +73,25 @@ def _install_waveshare_driver() -> None:
         )
 
 
+def _restart_managed_service() -> None:
+    """Restart an already-installed Gway service after its environment refreshes."""
+
+    if platform.system() != "Linux":
+        return
+    unit = SYSTEMD_UNIT_DIRECTORY / SERVICE_UNIT
+    if not unit.is_file():
+        return
+    _run(["systemctl", "try-restart", SERVICE_UNIT])
+
+
 def install(*_arguments: str) -> None:
+    """Install hardware support; Gway owns optional service unit installation."""
+
     _install_waveshare_driver()
 
 
 def upgrade(*_arguments: str) -> None:
+    """Refresh hardware support and restart an existing Gway-managed service."""
+
     _install_waveshare_driver()
+    _restart_managed_service()
