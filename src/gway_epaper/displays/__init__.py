@@ -10,6 +10,7 @@ def build_display(config: DisplayConfig):
         return TextDisplay()
     if config.driver == "waveshare_2in13_v4":
         return Waveshare2in13V4Display(
+            font=config.font,
             font_size=config.font_size,
             margin=config.margin,
             min_refresh_seconds=config.min_refresh_seconds,

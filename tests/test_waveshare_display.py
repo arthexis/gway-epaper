@@ -122,6 +122,63 @@ def test_changed_frames_are_coalesced_until_refresh_is_due() -> None:
     assert display._last_rows == ("three",)
 
 
+def test_font_aware_wrap_uses_measured_pixel_width() -> None:
+    image = Image.new("1", (250, 122), 255)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("DejaVuSansMono.ttf", 12)
+    max_width = int(Waveshare2in13V4Display._text_width(draw, "wide words", font) - 1)
+
+    rows = Waveshare2in13V4Display._wrap_rows(
+        draw,
+        ["wide words fit according to the active font"],
+        font,
+        max_width,
+    )
+
+    assert len(rows) > 1
+    assert " ".join(rows) == "wide words fit according to the active font"
+    assert all(
+        Waveshare2in13V4Display._text_width(draw, row, font) <= max_width
+        for row in rows
+    )
+
+
+def test_font_aware_wrap_preserves_explicit_newlines() -> None:
+    image = Image.new("1", (250, 122), 255)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("DejaVuSansMono.ttf", 12)
+
+    rows = Waveshare2in13V4Display._wrap_rows(
+        draw,
+        ["first line\nsecond line"],
+        font,
+        240,
+    )
+
+    assert rows == ("first line", "second line")
+
+
+def test_font_aware_wrap_splits_oversized_tokens() -> None:
+    image = Image.new("1", (250, 122), 255)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("DejaVuSansMono.ttf", 12)
+    max_width = int(Waveshare2in13V4Display._text_width(draw, "04A1B2", font))
+
+    rows = Waveshare2in13V4Display._wrap_rows(
+        draw,
+        ["04A1B2C3D4E5F6"],
+        font,
+        max_width,
+    )
+
+    assert "".join(rows) == "04A1B2C3D4E5F6"
+    assert len(rows) > 1
+    assert all(
+        Waveshare2in13V4Display._text_width(draw, row, font) <= max_width
+        for row in rows
+    )
+
+
 def test_clear_uses_hardware_clear_and_resets_cached_frame() -> None:
     clock = FakeClock()
     display, epd = build_fake_display(clock=clock)
@@ -142,7 +199,6 @@ def test_close_sleeps_initialized_panel_and_allows_reinitialization() -> None:
 
     display.render(["one"])
     display.close()
-
     assert epd.sleep_calls == 1
     assert display._epd is None
 
