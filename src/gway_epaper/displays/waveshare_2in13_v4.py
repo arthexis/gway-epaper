@@ -25,6 +25,7 @@ class Waveshare2in13V4Display:
     def __init__(
         self,
         *,
+        font: str = "DejaVuSansMono.ttf",
         font_size: int = 12,
         margin: int = 4,
         min_refresh_seconds: float = 5.0,
@@ -32,6 +33,9 @@ class Waveshare2in13V4Display:
     ) -> None:
         if min_refresh_seconds < 0:
             raise ValueError("min_refresh_seconds must be non-negative")
+        if not font.strip():
+            raise ValueError("font must not be empty")
+        self.font = font
         self.font_size = font_size
         self.margin = margin
         self.min_refresh_seconds = min_refresh_seconds
@@ -51,9 +55,6 @@ class Waveshare2in13V4Display:
             draw_module = import_module("PIL.ImageDraw")
             font_module = import_module("PIL.ImageFont")
         except ImportError as exc:
-            # Waveshare constructs gpiozero devices while epdconfig is imported.
-            # BadPinFactory is ImportError-compatible, so identify gpiozero failures
-            # before reporting a missing Python dependency.
             if exc.__class__.__module__.startswith("gpiozero"):
                 raise _gpio_runtime_error(exc) from exc
             missing = getattr(exc, "name", None) or "required Python module"
@@ -95,8 +96,6 @@ class Waveshare2in13V4Display:
 
     @classmethod
     def _split_oversized_word(cls, draw, word: str, font, max_width: int) -> list[str]:
-        """Split a single word at glyph boundaries when it cannot fit one line."""
-
         chunks: list[str] = []
         current = ""
         for character in word:
@@ -112,15 +111,11 @@ class Waveshare2in13V4Display:
 
     @classmethod
     def _wrap_paragraph(cls, draw, text: str, font, max_width: int) -> list[str]:
-        """Wrap one logical line using the selected font's measured pixel width."""
-
         if not text:
             return [""]
-
         words = text.split()
         if not words:
             return [""]
-
         lines: list[str] = []
         current = ""
         for word in words:
@@ -137,25 +132,18 @@ class Waveshare2in13V4Display:
                     if current:
                         lines.append(current)
                     current = part
-
-                # A split word must continue on a fresh physical line. Without this,
-                # adjacent chunks could be rejoined into an over-wide line.
                 if index < len(parts) - 1 and current:
                     lines.append(current)
                     current = ""
-
         if current:
             lines.append(current)
         return lines or [""]
 
     @classmethod
     def _wrap_rows(cls, draw, rows: Sequence[str], font, max_width: int) -> tuple[str, ...]:
-        """Preserve explicit line breaks while wrapping each line to pixel width."""
-
         wrapped: list[str] = []
         for row in rows:
-            logical_lines = str(row).split("\n")
-            for logical_line in logical_lines:
+            for logical_line in str(row).split("\n"):
                 wrapped.extend(cls._wrap_paragraph(draw, logical_line, font, max_width))
         return tuple(wrapped)
 
@@ -163,7 +151,6 @@ class Waveshare2in13V4Display:
         requested = tuple(rows)
         if requested == self._last_rows and self._pending_rows is None:
             return False
-
         self._pending_rows = requested
         now = self._clock()
         if not self._refresh_due(now):
@@ -172,16 +159,12 @@ class Waveshare2in13V4Display:
         requested_rows = self._pending_rows
         epd = self._device()
         _, image_module, draw_module, font_module = self._load()
-
-        # Waveshare exposes the panel in portrait coordinates (122x250). The
-        # application renders landscape, so the Pillow image is intentionally
-        # created as (epd.height, epd.width) == (250, 122).
         image = image_module.new("1", (epd.height, epd.width), 255)
         draw = draw_module.Draw(image)
         try:
-            font = font_module.truetype("DejaVuSansMono.ttf", self.font_size)
-        except OSError:
-            font = font_module.load_default()
+            font = font_module.truetype(self.font, self.font_size)
+        except OSError as exc:
+            raise RuntimeError(f"unable to load e-paper font {self.font!r}: {exc}") from exc
 
         max_text_width = max(1, epd.height - 2 * self.margin)
         wrapped_rows = self._wrap_rows(draw, requested_rows, font, max_text_width)
@@ -200,8 +183,6 @@ class Waveshare2in13V4Display:
         return True
 
     def clear(self) -> bool:
-        """Immediately clear the physical panel, bypassing refresh coalescing."""
-
         epd = self._device()
         epd.Clear(0xFF)
         self._last_rows = ()
