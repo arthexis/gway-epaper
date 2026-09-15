@@ -4,6 +4,7 @@ width = 40
 lines = 12
 refresh_seconds = 2.0
 min_refresh_seconds = 5.0
+font = "DejaVuSansMono.ttf"
 font_size = 12
 margin = 4
 
