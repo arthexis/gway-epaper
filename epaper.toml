@@ -11,6 +11,7 @@ margin = 4
 [printer]
 prefix_source = false
 timestamp = true
+state_file = "/var/lib/gway-epaper/frame.json"
 
 [[sources]]
 name = "auth-events"

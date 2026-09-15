@@ -30,6 +30,7 @@ class DisplayConfig:
 class PrinterConfig:
     prefix_source: bool = True
     timestamp: bool = False
+    state_file: str | None = "/var/lib/gway-epaper/frame.json"
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,17 @@ def _nonnegative_float(value: Any, label: str) -> float:
     return result
 
 
+def _optional_path(value: Any, label: str) -> str | None:
+    if value is None or value is False:
+        return None
+    if not isinstance(value, str):
+        raise ConfigError(f"{label} must be a path string or false")
+    value = value.strip()
+    if not value:
+        raise ConfigError(f"{label} must not be empty")
+    return value
+
+
 def _validate_cursor_file(value: Any, label: str) -> None:
     if value is None:
         return
@@ -135,21 +147,16 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
         driver=driver,
         width=_positive_int(display_data.get("width", 40), "display.width"),
         lines=_positive_int(display_data.get("lines", 12), "display.lines"),
-        refresh_seconds=_positive_float(
-            display_data.get("refresh_seconds", 2.0),
-            "display.refresh_seconds",
-        ),
+        refresh_seconds=_positive_float(display_data.get("refresh_seconds", 2.0), "display.refresh_seconds"),
         font=font,
         font_size=_positive_int(display_data.get("font_size", 12), "display.font_size"),
         margin=_nonnegative_int(display_data.get("margin", 4), "display.margin"),
-        min_refresh_seconds=_nonnegative_float(
-            display_data.get("min_refresh_seconds", 5.0),
-            "display.min_refresh_seconds",
-        ),
+        min_refresh_seconds=_nonnegative_float(display_data.get("min_refresh_seconds", 5.0), "display.min_refresh_seconds"),
     )
     printer = PrinterConfig(
         prefix_source=bool(printer_data.get("prefix_source", True)),
         timestamp=bool(printer_data.get("timestamp", False)),
+        state_file=_optional_path(printer_data.get("state_file", "/var/lib/gway-epaper/frame.json"), "printer.state_file"),
     )
 
     sources: list[SourceConfig] = []
@@ -164,25 +171,15 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
         if name in names:
             raise ConfigError(f"duplicate source name: {name}")
         if source_type not in {"file", "redis", "celery"}:
-            raise ConfigError(
-                f"sources[{index}].type must be 'file', 'redis', or 'celery'"
-            )
-
+            raise ConfigError(f"sources[{index}].type must be 'file', 'redis', or 'celery'")
         if source_type == "file":
             if not str(raw.get("path", "")).strip():
                 raise ConfigError(f"file source {name!r} requires path")
             start = str(raw.get("start", "end"))
             if start not in {"beginning", "end"}:
-                raise ConfigError(
-                    f"file source {name!r} start must be 'beginning' or 'end'"
-                )
-            _positive_int(
-                raw.get("max_bytes", 65536), f"file source {name!r} max_bytes"
-            )
-            _validate_cursor_file(
-                raw.get("cursor_file"), f"file source {name!r} cursor_file"
-            )
-
+                raise ConfigError(f"file source {name!r} start must be 'beginning' or 'end'")
+            _positive_int(raw.get("max_bytes", 65536), f"file source {name!r} max_bytes")
+            _validate_cursor_file(raw.get("cursor_file"), f"file source {name!r} cursor_file")
         if source_type == "redis":
             if not str(raw.get("url", "")).strip():
                 raise ConfigError(f"redis source {name!r} requires url")
@@ -191,31 +188,18 @@ def load_config(path: str | Path = "epaper.toml") -> EpaperConfig:
             start = str(raw.get("start", "$"))
             if not start:
                 raise ConfigError(f"redis source {name!r} requires a non-empty start")
-            _positive_int(
-                raw.get("batch_size", 100), f"redis source {name!r} batch_size"
-            )
-            _nonnegative_int(
-                raw.get("block_ms", 1000), f"redis source {name!r} block_ms"
-            )
+            _positive_int(raw.get("batch_size", 100), f"redis source {name!r} batch_size")
+            _nonnegative_int(raw.get("block_ms", 1000), f"redis source {name!r} block_ms")
             _validate_event_types(raw, f"redis source {name!r}")
-            _validate_cursor_file(
-                raw.get("cursor_file"), f"redis source {name!r} cursor_file"
-            )
-
+            _validate_cursor_file(raw.get("cursor_file"), f"redis source {name!r} cursor_file")
         if source_type == "celery":
             if not str(raw.get("url", "")).strip():
                 raise ConfigError(f"celery source {name!r} requires url")
             if not str(raw.get("queue", "")).strip():
                 raise ConfigError(f"celery source {name!r} requires queue")
-            _positive_int(
-                raw.get("batch_size", 100), f"celery source {name!r} batch_size"
-            )
-            _nonnegative_float(
-                raw.get("block_seconds", 1.0),
-                f"celery source {name!r} block_seconds",
-            )
+            _positive_int(raw.get("batch_size", 100), f"celery source {name!r} batch_size")
+            _nonnegative_float(raw.get("block_seconds", 1.0), f"celery source {name!r} block_seconds")
             _validate_event_types(raw, f"celery source {name!r}")
-
         values = dict(raw)
         values.pop("name", None)
         values.pop("type", None)
